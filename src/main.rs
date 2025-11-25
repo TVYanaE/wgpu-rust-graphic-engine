@@ -1,6 +1,6 @@
-use vulkan_rust_graphic_engine::{start_app, DynError};
+use wgpu_rust_graphic_engine::{start_app};
 
-fn main() -> Result<(), DynError> {
-    start_app()?;
-    Ok(())
+
+fn main() {
+    start_app();
 }
