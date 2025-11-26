@@ -1,17 +1,14 @@
 use std::{
     sync::Arc,
-    mem::size_of,
 };
 use winit::{window::Window};
 use wgpu::{
-    Device, Queue, Surface, Instance, InstanceDescriptor,
-    RequestAdapterOptions, DeviceDescriptor, CommandEncoderDescriptor, RenderPassDescriptor,
-    RenderPassColorAttachment, Operations, SurfaceConfiguration, RenderPipelineDescriptor,
+    CommandEncoderDescriptor, RenderPassDescriptor,
+    RenderPassColorAttachment, Operations, RenderPipelineDescriptor,
     PipelineLayoutDescriptor, RenderPipeline, ShaderModuleDescriptor, 
     ShaderSource, VertexState, PipelineCompilationOptions, FragmentState, PrimitiveState, PrimitiveTopology, MultisampleState,
-    Buffer, BufferUsages, VertexBufferLayout, VertexAttribute, VertexFormat, BufferAddress, VertexStepMode,
-    Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TexelCopyTextureInfo, TexelCopyBufferLayout,
-    Origin3d, TextureAspect, TextureViewDescriptor, SamplerDescriptor, AddressMode, FilterMode,
+    Buffer, BufferUsages, Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TexelCopyTextureInfo,
+    TexelCopyBufferLayout, Origin3d, TextureAspect, TextureViewDescriptor, SamplerDescriptor, AddressMode, FilterMode,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, SamplerBindingType, TextureSampleType, TextureViewDimension,
     ShaderStages, BindGroupDescriptor, BindGroupEntry, BindingResource, BindGroup, BufferBindingType,
     util::{BufferInitDescriptor, DeviceExt}, 
@@ -22,42 +19,13 @@ use winit::{
 };
 use image::{GenericImageView};
 use cgmath::Vector3;
-use crate::camera::{
-   Camera, CameraUniform, CameraController, 
+use crate::{
+    camera::{
+        Camera, CameraUniform, CameraController, 
+    },
+    vertex::Vertex,
+    core_state::CoreState,
 };
-
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    fn get_descriptor() -> VertexBufferLayout<'static>{
-        const ATTRIBUTES: &[VertexAttribute] = &[ 
-            VertexAttribute {
-                offset: 0,
-                shader_location: 0,
-                format: VertexFormat::Float32x3,
-            },
-            VertexAttribute {
-                offset: size_of::<[f32; 3]>() as BufferAddress,
-                shader_location: 1,
-                format: VertexFormat::Float32x2,
-            },
-        ];
-
-        let vertext_buffer_layout = VertexBufferLayout {
-            array_stride: size_of::<Vertex>() as BufferAddress,
-            step_mode: VertexStepMode::Vertex,
-            attributes: ATTRIBUTES
-        };
-
-        return vertext_buffer_layout;
-    }
-}
 
 const VERTICES: &[Vertex] = &[
     Vertex { position: [0.0, 0.5, 0.0], tex_coords: [0.5, 0.0] },
@@ -65,16 +33,8 @@ const VERTICES: &[Vertex] = &[
     Vertex { position: [0.5, -0.5, 0.0], tex_coords: [1.0, 1.0] },
 ];
 
-
-
-
 pub struct State {
-    window: Arc<Window>,
-    device: Device,
-    queue: Queue,
-    size: winit::dpi::PhysicalSize<u32>,
-    surface: Surface<'static>,
-    surface_format: TextureFormat,
+    core_state: CoreState,
     render_pipeline: RenderPipeline,
     vertex_buffer: Buffer,
     num_vertices: u32,
@@ -88,35 +48,9 @@ pub struct State {
 
 impl State {
     pub async fn new(window: Arc<Window>) -> State {
-        let instance = Instance::new(&InstanceDescriptor::default());
-        let adapter = instance
-            .request_adapter(&RequestAdapterOptions::default())
-            .await
-            .unwrap();
-        let (device, queue) = adapter
-            .request_device(&DeviceDescriptor::default())
-            .await
-            .unwrap();
-
-        let size = window.inner_size();
-
-        let surface = instance.create_surface(window.clone()).unwrap();
-        let cap = surface.get_capabilities(&adapter);
-        let surface_format = cap.formats[0];
-
-        let surface_config = SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
-            // Request compatibility with the sRGB-format texture view we‘re going to create later.
-            view_formats: vec![surface_format.add_srgb_suffix()],
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            width: size.width,
-            height: size.height,
-            desired_maximum_frame_latency: 2,
-            present_mode: wgpu::PresentMode::AutoVsync,
-        };
-        surface.configure(&device, &surface_config);
-
+        let core_state = CoreState::new(window.clone()).await; 
+         
+        // load texture
         let diffuse_bytes = include_bytes!("../tree.png");
         let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
         let diffuse_rgba = diffuse_image.to_rgba8();
@@ -140,7 +74,7 @@ impl State {
             view_formats: &[],
         };
 
-        let diffuse_texture = device.create_texture(&texture_descriptor);
+        let diffuse_texture = core_state.device.create_texture(&texture_descriptor);
 
         let texel_copy_texture_info = TexelCopyTextureInfo {
             texture: &diffuse_texture,
@@ -155,7 +89,7 @@ impl State {
             rows_per_image: Some(dimensions.1),
         };
 
-        queue.write_texture(
+        core_state.queue.write_texture(
             texel_copy_texture_info, 
             &diffuse_rgba, 
             texel_copy_buffer_layout, 
@@ -164,6 +98,7 @@ impl State {
 
         let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
 
+        // Sampler creating
         let sampler_descriptor = SamplerDescriptor {
             address_mode_u: AddressMode::ClampToEdge,
             address_mode_v: AddressMode::ClampToEdge,
@@ -174,8 +109,9 @@ impl State {
             ..Default::default()
         };
 
-        let diffuse_sampler = device.create_sampler(&sampler_descriptor);
+        let diffuse_sampler = core_state.device.create_sampler(&sampler_descriptor);
 
+        // BindGroup for texture and sampler creating
         const BIND_GROUP_LAYOUT_DESCRIPTOR_ENTRIES: &[BindGroupLayoutEntry] = &[
             BindGroupLayoutEntry {
                 binding: 0,
@@ -200,9 +136,9 @@ impl State {
             entries: BIND_GROUP_LAYOUT_DESCRIPTOR_ENTRIES,
         };
 
-        let texture_bind_group_layout = device.create_bind_group_layout(&bind_group_layout_descriptor);
+        let texture_bind_group_layout = core_state.device.create_bind_group_layout(&bind_group_layout_descriptor);
 
-        let diffuse_bind_group = device.create_bind_group(
+        let diffuse_bind_group = core_state.device.create_bind_group(
             &BindGroupDescriptor {
                 layout: &texture_bind_group_layout,
                 entries: &[
@@ -219,11 +155,13 @@ impl State {
             }
         );
 
+
+        // Camera config
         let camera = Camera {
             eye: (0.0, 1.0, 2.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: Vector3::unit_y(),
-            aspect: surface_config.width as f32 / surface_config.height as f32,
+            aspect: core_state.surface_configuration.width as f32 / core_state.surface_configuration.height as f32,
             fovy: 45.0,
             z_near: 0.1,
             z_far: 100.0
@@ -232,7 +170,7 @@ impl State {
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_projection(&camera);
 
-        let camera_buffer = device.create_buffer_init(
+        let camera_buffer = core_state.device.create_buffer_init(
             &BufferInitDescriptor { 
                 label: Some("Camera Buffer"), 
                 contents: bytemuck::cast_slice(&[camera_uniform]), 
@@ -240,7 +178,7 @@ impl State {
             }
         );
 
-        let camera_bind_group_layout = device.create_bind_group_layout(
+        let camera_bind_group_layout = core_state.device.create_bind_group_layout(
             &BindGroupLayoutDescriptor { 
                 label: Some("camera_bind_group_layout"), 
                 entries: &[
@@ -258,7 +196,7 @@ impl State {
             },
         );
 
-        let camera_bind_group = device.create_bind_group(
+        let camera_bind_group = core_state.device.create_bind_group(
             &BindGroupDescriptor { 
                 label: Some("camera_bind_group"), 
                 layout: &camera_bind_group_layout, 
@@ -271,13 +209,17 @@ impl State {
             }
         );
 
+        let camera_controller = CameraController::new(0.2);
+
+        // Loading shaders and create shader module
         let shader_module_descriptor = ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()), 
+            source: ShaderSource::Wgsl(include_str!("shaders/default_shader.wgsl").into()), 
         };
 
-        let shader_module = device.create_shader_module(shader_module_descriptor);
+        let shader_module = core_state.device.create_shader_module(shader_module_descriptor);
 
+        // Pipeline config
         let pipe_line_layout_descriptor = PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
@@ -287,7 +229,7 @@ impl State {
             push_constant_ranges: &[],
         };
 
-        let pipe_line_layout = device.create_pipeline_layout(&pipe_line_layout_descriptor);
+        let pipe_line_layout = core_state.device.create_pipeline_layout(&pipe_line_layout_descriptor);
 
         let vertex_state = VertexState {
             module: &shader_module,
@@ -300,7 +242,7 @@ impl State {
             module: &shader_module,
             entry_point: Some("fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
-                format: surface_config.format,
+                format: core_state.surface_configuration.format,
                 blend: Some(wgpu::BlendState::REPLACE),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
@@ -335,7 +277,7 @@ impl State {
             cache: None,
         };
 
-        let render_pipeline = device.create_render_pipeline(&render_pipeline_description);
+        let render_pipeline = core_state.device.create_render_pipeline(&render_pipeline_description);
 
         let buffer_init_descriptor = BufferInitDescriptor {
             label: Some("Vertex buffer"),
@@ -343,20 +285,13 @@ impl State {
             usage: BufferUsages::VERTEX,
         };
 
-        let vertex_buffer = device.create_buffer_init(&buffer_init_descriptor);
+        let vertex_buffer = core_state.device.create_buffer_init(&buffer_init_descriptor);
 
         let num_vertices = VERTICES.len() as u32;
 
-        let camera_controller = CameraController::new(0.2);
-
-        let state = State {
-            window,
-            device,
-            queue,
-            size,
-            surface,
-            surface_format,
-            render_pipeline,
+        let state = Self {
+            core_state: core_state, 
+            render_pipeline: render_pipeline,
             vertex_buffer: vertex_buffer,
             num_vertices: num_vertices,
             bind_group: diffuse_bind_group,
@@ -365,7 +300,7 @@ impl State {
             camera_buffer: camera_buffer,
             camera_uniform: camera_uniform,
             camera_controller: camera_controller,
-        }; 
+        };
 
         return state;
     }
@@ -382,11 +317,11 @@ impl State {
     pub fn update(&mut self) {
         self.camera_controller.update_camera(&mut self.camera);
         self.camera_uniform.update_view_projection(&self.camera);
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+        self.core_state.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
     }
 
     pub fn get_window(&self) -> &Window {
-        &self.window
+        &self.core_state.window
     }
 
     pub fn configure_surface(&self) {
@@ -394,19 +329,19 @@ impl State {
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.size = new_size;
+        self.core_state.size = new_size;
 
         // reconfigure the surface
         self.configure_surface();
     }
 
     pub fn render(&mut self) {
-        let surface_current_texture = self.surface.get_current_texture().unwrap();
+        let surface_current_texture = self.core_state.surface.get_current_texture().unwrap();
 
         let current_texture =  surface_current_texture.texture.clone(); 
 
         let texture_view_descriptor = TextureViewDescriptor {
-            format: Some(self.surface_format.add_srgb_suffix()),
+            format: Some(self.core_state.surface_texture_format.add_srgb_suffix()),
             ..Default::default()
         };
 
@@ -426,7 +361,7 @@ impl State {
             ops: operations, 
         }; 
 
-        let mut command_encoder = self.device.create_command_encoder(&command_encoder_description); 
+        let mut command_encoder = self.core_state.device.create_command_encoder(&command_encoder_description); 
         
         let render_pass_description = RenderPassDescriptor {
             label: None,
@@ -448,7 +383,7 @@ impl State {
 
         let command_buffer = command_encoder.finish();
 
-        self.queue.submit([command_buffer]);
+        self.core_state.queue.submit([command_buffer]);
 
         surface_current_texture.present(); 
     }

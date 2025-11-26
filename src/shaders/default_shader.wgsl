@@ -18,11 +18,11 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(
-	model: VertexInput,
+	input: VertexInput,
 ) -> VertexOutput {
 	var out: VertexOutput;
-	out.tex_coords = model.tex_coords;
-	out.clip_position = camera.view_projection * vec4<f32>(model.position, 1.0);
+	out.tex_coords = input.tex_coords;
+	out.clip_position = camera.view_projection * vec4<f32>(input.position, 1.0);
 	return out;
 }
 
@@ -34,6 +34,6 @@ var t_diffuse: texture_2d<f32>;
 var s_diffuse: sampler;
 
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, in.tex_coords);
+fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    return textureSample(t_diffuse, s_diffuse, input.tex_coords);
 }

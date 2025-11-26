@@ -1,5 +1,10 @@
 mod state;
 mod camera;
+mod vertex;
+mod shapes;
+mod shader_programs;
+mod traits;
+mod core_state;
 
 use std::{
     sync::Arc,
