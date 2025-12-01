@@ -1,23 +1,20 @@
 use std::{
     sync::Arc,
+    rc::Rc,
 };
 use winit::{window::Window};
 use wgpu::{
     CommandEncoderDescriptor, RenderPassDescriptor,
-    RenderPassColorAttachment, Operations, RenderPipelineDescriptor,
-    PipelineLayoutDescriptor, RenderPipeline, ShaderModuleDescriptor, 
-    ShaderSource, VertexState, PipelineCompilationOptions, FragmentState, PrimitiveState, PrimitiveTopology, MultisampleState,
-    Buffer, BufferUsages, Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TexelCopyTextureInfo,
-    TexelCopyBufferLayout, Origin3d, TextureAspect, TextureViewDescriptor, SamplerDescriptor, AddressMode, FilterMode,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, SamplerBindingType, TextureSampleType, TextureViewDimension,
-    ShaderStages, BindGroupDescriptor, BindGroupEntry, BindingResource, BindGroup, BufferBindingType,
+    RenderPassColorAttachment, Operations, RenderPipelineDescriptor, PipelineLayoutDescriptor, 
+    RenderPipeline, VertexState, PipelineCompilationOptions, FragmentState, PrimitiveState, 
+    PrimitiveTopology, MultisampleState, Buffer, BufferUsages, TextureViewDescriptor,  BindGroupLayoutDescriptor, 
+    BindGroupLayoutEntry, BindingType, ShaderStages, BindGroupDescriptor, BindGroupEntry, BindGroup, BufferBindingType,
     util::{BufferInitDescriptor, DeviceExt}, 
 };
 use winit::{
     event_loop::ActiveEventLoop,
     keyboard::KeyCode
 };
-use image::{GenericImageView};
 use cgmath::Vector3;
 use crate::{
     camera::{
@@ -25,6 +22,22 @@ use crate::{
     },
     vertex::Vertex,
     core_state::CoreState,
+    shader_library::ShaderLibrary,
+    managers::{
+        texture_manager::TextureManager,
+        sampler_manager::SamplerManager,
+        bind_group_layout_manager::BindGroupLayoutManager,
+        sprite_material_manager::SpriteMaterialManager,
+    },
+    enums::{
+        bind_group_layout_name_enum::BindGroupLayoutName,
+    },
+    structures::{
+        materials::sprite_material::SpriteMaterial,
+    },
+    functions::{
+        bind_group_functions::create_bind_group_for_sprite_material,
+    },
 };
 
 const VERTICES: &[Vertex] = &[
@@ -33,12 +46,17 @@ const VERTICES: &[Vertex] = &[
     Vertex { position: [0.5, -0.5, 0.0], tex_coords: [1.0, 1.0] },
 ];
 
+#[allow(dead_code)]
 pub struct State {
     core_state: CoreState,
+    shader_library: ShaderLibrary,
+    texture_manager: TextureManager,
+    sampler_manager: SamplerManager,
+    bind_group_layout_manager: BindGroupLayoutManager,
+    sprite_material_manager: SpriteMaterialManager,
     render_pipeline: RenderPipeline,
     vertex_buffer: Buffer,
-    num_vertices: u32,
-    bind_group: BindGroup,
+    num_vertices: u32, 
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
@@ -49,112 +67,43 @@ pub struct State {
 impl State {
     pub async fn new(window: Arc<Window>) -> State {
         let core_state = CoreState::new(window.clone()).await; 
-         
-        // load texture
-        let diffuse_bytes = include_bytes!("../tree.png");
-        let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-        let diffuse_rgba = diffuse_image.to_rgba8();
         
-        let dimensions = diffuse_image.dimensions();
+        let shader_library = ShaderLibrary::new(&core_state);
+        
+        let texture_manager = TextureManager::new();
 
-        let texture_size = Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
+        texture_manager.load_texture("assets/tree.ktx2", &core_state.device, &core_state.queue);
 
-        let texture_descriptor = TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-            label: Some("diffuse_texture"),
-            view_formats: &[],
-        };
+        let tree_texture_view = texture_manager.get_default_texture_view("tree").unwrap();
 
-        let diffuse_texture = core_state.device.create_texture(&texture_descriptor);
+        let sampler_manager = SamplerManager::new(&core_state.device); 
+        
+        let default_sampler = sampler_manager.get_sampler("default_sampler").unwrap();
 
-        let texel_copy_texture_info = TexelCopyTextureInfo {
-            texture: &diffuse_texture,
-            mip_level: 0,
-            origin: Origin3d::ZERO,
-            aspect: TextureAspect::All
-        }; 
+        let bind_group_layout_manager = BindGroupLayoutManager::new(&core_state.device);
 
-        let texel_copy_buffer_layout = TexelCopyBufferLayout {
-            offset: 0,
-            bytes_per_row: Some(4 * dimensions.0),
-            rows_per_image: Some(dimensions.1),
-        };
+        let default_sprite_material = Rc::new(SpriteMaterial::new(
+            tree_texture_view,
+            default_sampler,
+        ));
 
-        core_state.queue.write_texture(
-            texel_copy_texture_info, 
-            &diffuse_rgba, 
-            texel_copy_buffer_layout, 
-            texture_size
+        let default_bind_group_layout = bind_group_layout_manager.get_bind_group_layout(
+            &BindGroupLayoutName::DefaultBindGroupLayout
+        ).unwrap();
+
+        let default_sprite_material_bind_group = create_bind_group_for_sprite_material(
+            &core_state.device, 
+            &default_bind_group_layout, 
+            &default_sprite_material.get_texture_view(), 
+            &default_sprite_material.get_sampler(), 
+            Some("default_sprite_material_bind_group")
         );
 
-        let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
+        default_sprite_material.set_bind_group(default_sprite_material_bind_group);
 
-        // Sampler creating
-        let sampler_descriptor = SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge, 
-            mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Nearest,
-            mipmap_filter: FilterMode::Nearest,
-            ..Default::default()
-        };
+        let sprite_material_manager = SpriteMaterialManager::new();
 
-        let diffuse_sampler = core_state.device.create_sampler(&sampler_descriptor);
-
-        // BindGroup for texture and sampler creating
-        const BIND_GROUP_LAYOUT_DESCRIPTOR_ENTRIES: &[BindGroupLayoutEntry] = &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                count: None,
-                ty: BindingType::Texture { 
-                    sample_type: TextureSampleType::Float { filterable: true }, 
-                    view_dimension: TextureViewDimension::D2, 
-                    multisampled: false, 
-                },
-            },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::FRAGMENT,
-                count: None,
-                ty: BindingType::Sampler(SamplerBindingType::Filtering)
-            },
-        ];
-
-        let bind_group_layout_descriptor = BindGroupLayoutDescriptor {
-            label: Some("texture_bind_group_layout"),
-            entries: BIND_GROUP_LAYOUT_DESCRIPTOR_ENTRIES,
-        };
-
-        let texture_bind_group_layout = core_state.device.create_bind_group_layout(&bind_group_layout_descriptor);
-
-        let diffuse_bind_group = core_state.device.create_bind_group(
-            &BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: BindingResource::TextureView(&diffuse_texture_view)
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: BindingResource::Sampler(&diffuse_sampler)
-                    },
-                ],
-                label: Some("diffuse_bind_group")
-            }
-        );
-
+        sprite_material_manager.add_sprite_material("default_sprite_material", default_sprite_material); 
 
         // Camera config
         let camera = Camera {
@@ -209,21 +158,13 @@ impl State {
             }
         );
 
-        let camera_controller = CameraController::new(0.2);
-
-        // Loading shaders and create shader module
-        let shader_module_descriptor = ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/default_shader.wgsl").into()), 
-        };
-
-        let shader_module = core_state.device.create_shader_module(shader_module_descriptor);
+        let camera_controller = CameraController::new(0.2); 
 
         // Pipeline config
         let pipe_line_layout_descriptor = PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
-                &texture_bind_group_layout,
+                &default_bind_group_layout,
                 &camera_bind_group_layout,
             ],
             push_constant_ranges: &[],
@@ -232,14 +173,14 @@ impl State {
         let pipe_line_layout = core_state.device.create_pipeline_layout(&pipe_line_layout_descriptor);
 
         let vertex_state = VertexState {
-            module: &shader_module,
+            module: &shader_library.basic_shader_module,
             entry_point: Some("vs_main"),
             buffers: &[Vertex::get_descriptor()],
             compilation_options: PipelineCompilationOptions::default(), 
         };
 
         let fragment_state = FragmentState {
-            module: &shader_module,
+            module: &shader_library.basic_shader_module,
             entry_point: Some("fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
                 format: core_state.surface_configuration.format,
@@ -290,11 +231,15 @@ impl State {
         let num_vertices = VERTICES.len() as u32;
 
         let state = Self {
-            core_state: core_state, 
+            core_state: core_state,
+            shader_library: shader_library,
+            texture_manager: texture_manager,
+            sampler_manager: sampler_manager,
+            bind_group_layout_manager: bind_group_layout_manager,
+            sprite_material_manager: sprite_material_manager,
             render_pipeline: render_pipeline,
             vertex_buffer: vertex_buffer,
             num_vertices: num_vertices,
-            bind_group: diffuse_bind_group,
             camera: camera,
             camera_bind_group: camera_bind_group,
             camera_buffer: camera_buffer,
@@ -372,9 +317,13 @@ impl State {
         };
 
         let mut render_pass = command_encoder.begin_render_pass(&render_pass_description);
-       
+      
+        let default_bind_group = self.sprite_material_manager.get_sprite_material(
+            "default_sprite_material"
+        ).unwrap().get_bind_group();
+
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_bind_group(0, &*default_bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.draw(0..self.num_vertices, 0..1);

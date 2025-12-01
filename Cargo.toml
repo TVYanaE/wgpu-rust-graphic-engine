@@ -12,6 +12,7 @@ winit = "0.30"
 env_logger = "0.11"
 pollster = "0.4"
 cgmath = "0.18"
+ktx2 = "0.4"
 
 [dependencies.bytemuck]
 version = "1.24"

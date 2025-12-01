@@ -2,9 +2,13 @@ mod state;
 mod camera;
 mod vertex;
 mod shapes;
-mod shader_programs;
+mod shader_library;
 mod traits;
 mod core_state;
+mod managers;
+mod enums;
+mod structures;
+mod functions;
 
 use std::{
     sync::Arc,

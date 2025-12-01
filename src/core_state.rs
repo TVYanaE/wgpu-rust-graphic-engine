@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use wgpu::{
     Instance, InstanceDescriptor, 
-    Device, DeviceDescriptor, 
+    Device, DeviceDescriptor, Features,
     Adapter, RequestAdapterOptions, 
     Queue, 
     TextureFormat,
@@ -12,7 +12,7 @@ use winit::{
     window::Window,
 };
 
-
+#[allow(dead_code)]
 pub struct CoreState{
     pub instance: Instance,
     pub window: Arc<Window>,
@@ -32,8 +32,14 @@ impl CoreState {
             .request_adapter(&RequestAdapterOptions::default())
             .await
             .unwrap();
+
+        let required_features = Features::TEXTURE_COMPRESSION_BC; 
+
         let (device, queue) = adapter
-            .request_device(&DeviceDescriptor::default())
+            .request_device(&DeviceDescriptor {
+                required_features: required_features,
+                ..Default::default()
+            })
             .await
             .unwrap();
         let surface = instance.create_surface(window.clone()).unwrap(); 
