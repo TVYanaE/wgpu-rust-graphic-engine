@@ -1,8 +1,5 @@
 use wgpu::{
-    ShaderModule, ShaderModuleDescriptor, ShaderSource,
-};
-use crate::{
-    core_state::CoreState, 
+    Device, ShaderModule, ShaderModuleDescriptor, ShaderSource,
 };
 
 pub struct ShaderLibrary{
@@ -10,14 +7,14 @@ pub struct ShaderLibrary{
 }
 
 impl ShaderLibrary {
-    pub fn new(core_state: &CoreState) -> Self {
+    pub fn new(device: &Device) -> Self {
         
         let basic_shader_module_descriptor = ShaderModuleDescriptor {
             label: Some("Basic shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/basic_shader.wgsl").into()), 
         };
 
-        let basic_shader_module = core_state.device.create_shader_module(basic_shader_module_descriptor); 
+        let basic_shader_module = device.create_shader_module(basic_shader_module_descriptor); 
      
         Self { 
             basic_shader_module: basic_shader_module

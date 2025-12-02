@@ -1,37 +1,46 @@
-mod state;
 mod camera;
 mod vertex;
 mod shapes;
 mod shader_library;
 mod traits;
-mod core_state;
 mod managers;
 mod enums;
 mod structures;
 mod functions;
+mod aliases;
+mod components;
+mod systems;
 
 use std::{
     sync::Arc,
 };
 use winit::{
     application::ApplicationHandler,
-    event::{WindowEvent, KeyEvent},
+    event::{WindowEvent, KeyEvent, StartCause},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::{Window, WindowId},
     keyboard::{PhysicalKey},
 };
 use crate::{
-    state::State,
+    structures::{
+        states::{
+            ecs_state::ECSState,
+            render_state::RenderState,
+        },
+        timer::Timer,
+    },
 };
-
-
 
 #[derive(Default)]
 struct App {
-    state: Option<State>,
+    ecs_state: Option<ECSState>,
+    render_state: Option<RenderState>,
+    timer: Option<Timer>,
 }
 
 impl ApplicationHandler for App {
+
+    // This event is triggered after StartCase::Init 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // Create window object
         let window = Arc::new(
@@ -40,41 +49,73 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let state = pollster::block_on(State::new(window.clone()));
-        self.state = Some(state);
+        let render_state = pollster::block_on(RenderState::new(window.clone()));
+        self.render_state = Some(render_state);
+
+        let timer = self.timer.as_mut().unwrap();
+
+        timer.update();
+
+        // methods for run_fixed, run_variable, prepare and after that request redraw.
 
         window.request_redraw();
     }
 
+    /* fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        
+    }
+
+    fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+        
+    } */
+
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let state = self.state.as_mut().unwrap();
+        let render_state = self.render_state.as_mut().unwrap();
+        let ecs_state = self.ecs_state.as_mut().unwrap();
         match event {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                state.update();
-                state.render();
-                // Emits a new redraw requested event.
-                state.get_window().request_redraw();
+                render_state.render();
             }
-            WindowEvent::Resized(size) => {
+            WindowEvent::Resized(physical_size) => {
                 // Reconfigures the size of the surface. We do not re-render
                 // here as this event is always followed up by redraw request.
-                state.resize(size);
+                render_state.reconfigure_surface(physical_size);
             },
             WindowEvent::KeyboardInput {  
                 event: KeyEvent {
-                    physical_key: PhysicalKey::Code(code),
+                    physical_key: PhysicalKey::Code(key_code),
                     state: key_state,
                     ..
                 }, 
                 .. 
-            } => state.handle_key(event_loop, code, key_state.is_pressed()),
+            } => ecs_state.handle_key(event_loop, key_code, key_state.is_pressed()),
             _ => (),
         }
     }
+
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        match cause {
+            StartCause::Init => {
+                let ecs_state = ECSState::new();
+                let timer = Timer::new();
+                self.ecs_state = Some(ecs_state);
+                self.timer = Some(timer);
+            },
+            StartCause::Poll => {
+                let timer = self.timer.as_mut().unwrap();
+
+                timer.update();
+
+                // methods for run_fixed, run_variable, prepare and after that trigger RedrawRequested. 
+            },
+            // There are two another type of StartCause for another type of ControlFlow
+            _ => {},    
+        }
+    } 
 }
 
 
@@ -85,8 +126,7 @@ pub fn start_app() {
     let event_loop = EventLoop::new().unwrap();
 
     event_loop.set_control_flow(ControlFlow::Poll);
-
-    
+ 
     let mut app = App::default();
     event_loop.run_app(&mut app).unwrap();
 }
