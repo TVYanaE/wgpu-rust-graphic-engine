@@ -1,4 +1,8 @@
-#[derive(Hash, Eq, PartialEq)]
+#[derive(
+    Debug, Hash, 
+    Eq, PartialEq,
+    Clone, Copy,
+)]
 pub enum BindGroupLayoutName{
     DefaultBindGroupLayout,
 }

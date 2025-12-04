@@ -1,5 +1,5 @@
 mod camera;
-mod vertex;
+mod buffers_layouts;
 mod shapes;
 mod shader_library;
 mod traits;
@@ -24,8 +24,7 @@ use winit::{
 use crate::{
     structures::{
         states::{
-            ecs_state::ECSState,
-            render_state::RenderState,
+            app_state::AppState,
         },
         timer::Timer,
     },
@@ -33,8 +32,7 @@ use crate::{
 
 #[derive(Default)]
 struct App {
-    ecs_state: Option<ECSState>,
-    render_state: Option<RenderState>,
+    app_state: Option<AppState>, 
     timer: Option<Timer>,
 }
 
@@ -49,14 +47,23 @@ impl ApplicationHandler for App {
                 .unwrap(),
         );
 
-        let render_state = pollster::block_on(RenderState::new(window.clone()));
-        self.render_state = Some(render_state);
+        let app_state_ref = self.app_state.as_mut().unwrap();
+
+        pollster::block_on(app_state_ref.init_render_state(window.clone()));
 
         let timer = self.timer.as_mut().unwrap();
 
         timer.update();
 
         // methods for run_fixed, run_variable, prepare and after that request redraw.
+
+        while timer.should_step_fixed() {
+            app_state_ref.run_fixed_time_tasks(&timer).unwrap();
+        }
+
+        app_state_ref.run_real_time_tasks(&timer).unwrap(); 
+
+        app_state_ref.render_prepare().unwrap();
 
         window.request_redraw();
     }
@@ -69,21 +76,19 @@ impl ApplicationHandler for App {
         
     } */
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        let render_state = self.render_state.as_mut().unwrap();
-        let ecs_state = self.ecs_state.as_mut().unwrap();
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {   
         match event {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                render_state.render();
+                self.app_state.as_mut().unwrap().redraw_handle().unwrap();
             }
             WindowEvent::Resized(physical_size) => {
                 // Reconfigures the size of the surface. We do not re-render
                 // here as this event is always followed up by redraw request.
-                render_state.reconfigure_surface(physical_size);
+                self.app_state.as_mut().unwrap().resize_handle(physical_size).unwrap();
             },
             WindowEvent::KeyboardInput {  
                 event: KeyEvent {
@@ -92,7 +97,7 @@ impl ApplicationHandler for App {
                     ..
                 }, 
                 .. 
-            } => ecs_state.handle_key(event_loop, key_code, key_state.is_pressed()),
+            } => self.app_state.as_mut().unwrap().keyboard_input_handle(event_loop, key_code, key_state.is_pressed()).unwrap(),
             _ => (),
         }
     }
@@ -100,17 +105,30 @@ impl ApplicationHandler for App {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         match cause {
             StartCause::Init => {
-                let ecs_state = ECSState::new();
+                let mut app_state = AppState::default();
+                app_state.init_ecs_state().unwrap();
+                
                 let timer = Timer::new();
-                self.ecs_state = Some(ecs_state);
+                
+                self.app_state = Some(app_state); 
                 self.timer = Some(timer);
             },
             StartCause::Poll => {
                 let timer = self.timer.as_mut().unwrap();
+                let app_state_ref = self.app_state.as_mut().unwrap();
 
                 timer.update();
+               
+                while timer.should_step_fixed() {
+                    app_state_ref.run_fixed_time_tasks(&timer).unwrap();
+                }
 
-                // methods for run_fixed, run_variable, prepare and after that trigger RedrawRequested. 
+                app_state_ref.run_real_time_tasks(&timer).unwrap(); 
+
+                app_state_ref.render_prepare().unwrap();
+
+                app_state_ref.get_window().request_redraw();
+
             },
             // There are two another type of StartCause for another type of ControlFlow
             _ => {},    

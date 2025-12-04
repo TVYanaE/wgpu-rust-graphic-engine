@@ -15,23 +15,23 @@ use crate::{
 };
 
 const DEFAULT_BIND_GROUP_LAYOUT_DESCRIPTOR_ENTRIES: &[BindGroupLayoutEntry] = &[
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                count: None,
-                ty: BindingType::Texture { 
-                    sample_type: TextureSampleType::Float { filterable: true }, 
-                    view_dimension: TextureViewDimension::D2, 
-                    multisampled: false, 
-                },
-            },
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::FRAGMENT,
-                count: None,
-                ty: BindingType::Sampler(SamplerBindingType::Filtering)
-            },
-        ];
+    BindGroupLayoutEntry {
+        binding: 0,
+        visibility: ShaderStages::FRAGMENT,
+        count: None,
+        ty: BindingType::Texture { 
+            sample_type: TextureSampleType::Float { filterable: true }, 
+            view_dimension: TextureViewDimension::D2, 
+            multisampled: false, 
+        },
+    },
+    BindGroupLayoutEntry {
+        binding: 1,
+        visibility: ShaderStages::FRAGMENT,
+        count: None,
+        ty: BindingType::Sampler(SamplerBindingType::Filtering)
+    },
+];
 
 pub struct BindGroupLayoutManager {
     bind_group_layout_storage: RefCell<HashMap<BindGroupLayoutName, Rc<BindGroupLayout>>>,

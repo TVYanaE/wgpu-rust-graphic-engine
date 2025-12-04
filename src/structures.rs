@@ -1,5 +1,11 @@
-pub mod materials;
+pub mod material;
 pub mod storages;
 pub mod entity;
 pub mod states;
 pub mod timer;
+pub mod entity_factory;
+pub mod batcher;
+pub mod render_items;
+pub mod texture_info;
+pub mod texture_atlas;
+pub mod render_batch;

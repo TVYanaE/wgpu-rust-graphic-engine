@@ -7,10 +7,13 @@ use wgpu::{
     Device,
     Sampler, SamplerDescriptor, AddressMode, FilterMode,
 };
+use crate::{
+    enums::sampler_name_enum::SamplerName,
+};
 
 
 pub struct SamplerManager {
-    sampler_storage: RefCell<HashMap<String, Rc<Sampler>>>,
+    sampler_storage: RefCell<HashMap<SamplerName, Rc<Sampler>>>,
 }
 
 impl SamplerManager {
@@ -29,11 +32,11 @@ impl SamplerManager {
 
         let default_sampler = device.create_sampler(&default_sampler_descriptor);
         
-        sampler_storage.borrow_mut().insert("default_sampler".to_string(), Rc::new(default_sampler));
+        sampler_storage.borrow_mut().insert(SamplerName::DefaultSampler, Rc::new(default_sampler));
 
         Self { sampler_storage: sampler_storage }
     }
-    pub fn get_sampler(&self, sampler_name: &str) -> Option<Rc<Sampler>> {
-        self.sampler_storage.borrow().get(sampler_name).cloned()
+    pub fn get_sampler(&self, sampler_name: SamplerName) -> Option<Rc<Sampler>> {
+        self.sampler_storage.borrow().get(&sampler_name).cloned()
     }
 }

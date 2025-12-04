@@ -1,2 +1,1 @@
-pub mod sprite;
-pub mod transform_2d;
+pub mod sprite_component;

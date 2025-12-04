@@ -1,6 +1,7 @@
 use std::{
     sync::Arc,
     rc::Rc,
+    env::current_exe,
 };
 use wgpu::{
     Instance, InstanceDescriptor, 
@@ -10,9 +11,8 @@ use wgpu::{
     TextureFormat, TextureViewDescriptor, CommandEncoderDescriptor, Operations,
     Surface, SurfaceConfiguration, RenderPassDescriptor, RenderPassColorAttachment,
     TextureUsages, CompositeAlphaMode, PresentMode,
-    RenderPipelineDescriptor, PipelineLayoutDescriptor, 
-    RenderPipeline, VertexState, PipelineCompilationOptions, FragmentState, PrimitiveState, 
-    PrimitiveTopology, MultisampleState, Buffer, BufferUsages, 
+    PrimitiveState, IndexFormat,
+    PrimitiveTopology, MultisampleState, Buffer, BufferUsages,
     util::{BufferInitDescriptor, DeviceExt}, 
 };
 use winit::{
@@ -20,30 +20,27 @@ use winit::{
     dpi::PhysicalSize, 
 };
 use crate::{
-    vertex::Vertex,
+    shapes::square::{SQUARE_INDEX, SQUARE_VERTICES},
     shader_library::ShaderLibrary,
     managers::{
-        texture_manager::TextureManager,
+        texture_atlas_manager::TextureAtlasManager,
         sampler_manager::SamplerManager,
         bind_group_layout_manager::BindGroupLayoutManager,
-        sprite_material_manager::SpriteMaterialManager,
+        bind_group_manager::BindGroupManager,
+        render_pipeline_manager::RenderPipelineManager,
+        material_manager::MaterialManager,
     },
     enums::{
         bind_group_layout_name_enum::BindGroupLayoutName,
+        bind_group_name_enum::BindGroupName,
+        render_pipeline_name_enum::RenderPipelineName,
+        sampler_name_enum::SamplerName,
     },
     structures::{
-        materials::sprite_material::SpriteMaterial,
-    },
-    functions::{
-        bind_group_functions::create_bind_group_for_sprite_material,
+        material::Material,
+        render_batch::RenderBatch,
     },
 };
-
-const VERTICES: &[Vertex] = &[
-    Vertex { position: [0.0, 0.5, 0.0], tex_coords: [0.5, 0.0] },
-    Vertex { position: [-0.5, -0.5, 0.0], tex_coords: [0.0, 1.0] },
-    Vertex { position: [0.5, -0.5, 0.0], tex_coords: [1.0, 1.0] },
-];
 
 pub struct RenderState {
     pub instance: Instance,
@@ -53,16 +50,18 @@ pub struct RenderState {
     pub queue: Queue,
     pub surface: Surface<'static>,
     pub surface_configuration: SurfaceConfiguration,
-    pub size: winit::dpi::PhysicalSize<u32>,
+    pub window_size: PhysicalSize<u32>,
     pub surface_texture_format: TextureFormat,
     pub shader_library: ShaderLibrary,
-    pub texture_manager: TextureManager,
+    pub texture_atlas_manager: TextureAtlasManager,
     pub sampler_manager: SamplerManager,
     pub bind_group_layout_manager: BindGroupLayoutManager,
-    pub sprite_material_manager: SpriteMaterialManager,
-    pub render_pipeline: RenderPipeline,
-    pub vertex_buffer: Buffer,
-    pub num_vertices: u32, 
+    pub bind_group_manager: BindGroupManager,
+    pub material_manager: MaterialManager,
+    pub render_pipeline_manager: RenderPipelineManager,
+    pub square_vertex_buffer: Buffer,
+    pub square_index_buffer: Buffer,
+    pub index_format: IndexFormat,
 }
 
 impl RenderState {
@@ -85,7 +84,7 @@ impl RenderState {
         let surface = instance.create_surface(window.clone()).unwrap(); 
 
         // Surface config
-        let size = window.inner_size();
+        let window_size = window.inner_size();
         let surface_capabilities = surface.get_capabilities(&adapter);
         let surface_texture_format = surface_capabilities.formats[0];
 
@@ -95,8 +94,8 @@ impl RenderState {
             // Request compatibility with the sRGB-format texture view we‘re going to create later.
             view_formats: vec![surface_texture_format.add_srgb_suffix()],
             alpha_mode: CompositeAlphaMode::Auto,
-            width: size.width,
-            height: size.height,
+            width: window_size.width,
+            height: window_size.height,
             desired_maximum_frame_latency: 2,
             present_mode: PresentMode::AutoVsync,
         };
@@ -104,69 +103,40 @@ impl RenderState {
  
         let shader_library = ShaderLibrary::new(&device);
         
-        let texture_manager = TextureManager::new();
+        let texture_atlas_manager= TextureAtlasManager::new();
 
-        texture_manager.load_texture("assets/tree.ktx2", &device, &queue);
+        let execute_dir = current_exe().unwrap().parent().unwrap().to_path_buf();
 
-        let tree_texture_view = texture_manager.get_default_texture_view("tree").unwrap();
+        let texture_atlas_file_path = execute_dir.clone().join("assets/texture_atlases/texture_atlas_1/texture_atlas_1.ktx2"); 
+
+        let texture_atlas_meta_path = execute_dir.join("assets/texture_atlases/texture_atlas_1/texture_atlas_1.json");
+
+        texture_atlas_manager.load_texture_atlas(
+            1, 
+            texture_atlas_file_path, 
+            texture_atlas_meta_path, 
+            &device, 
+            &queue
+        );
 
         let sampler_manager = SamplerManager::new(&device); 
         
-        let default_sampler = sampler_manager.get_sampler("default_sampler").unwrap();
+        let default_sampler = sampler_manager.get_sampler(SamplerName::DefaultSampler).unwrap();
 
         let bind_group_layout_manager = BindGroupLayoutManager::new(&device);
 
-        let default_sprite_material = Rc::new(SpriteMaterial::new(
-            tree_texture_view,
-            default_sampler,
-        ));
+        let bind_group_manager = BindGroupManager::new();
 
-        let default_bind_group_layout = bind_group_layout_manager.get_bind_group_layout(
-            &BindGroupLayoutName::DefaultBindGroupLayout
-        ).unwrap();
-
-        let default_sprite_material_bind_group = create_bind_group_for_sprite_material(
+        bind_group_manager.create_bind_group(
             &device, 
-            &default_bind_group_layout, 
-            &default_sprite_material.get_texture_view(), 
-            &default_sprite_material.get_sampler(), 
-            Some("default_sprite_material_bind_group")
-        );
+            &bind_group_layout_manager.get_bind_group_layout(&BindGroupLayoutName::DefaultBindGroupLayout).unwrap(), 
+            &texture_atlas_manager.get_texture_view(1).unwrap(), 
+            &default_sampler, 
+            Some("Texture atlas 1 bind group"), 
+            BindGroupName::TextureAtlas1BindGroup,
+        );  
 
-        default_sprite_material.set_bind_group(default_sprite_material_bind_group);
-
-        let sprite_material_manager = SpriteMaterialManager::new();
-
-        sprite_material_manager.add_sprite_material("default_sprite_material", default_sprite_material);  
-
-        // Pipeline config
-        let pipe_line_layout_descriptor = PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[
-                &default_bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        };
-
-        let pipe_line_layout = device.create_pipeline_layout(&pipe_line_layout_descriptor);
-
-        let vertex_state = VertexState {
-            module: &shader_library.basic_shader_module,
-            entry_point: Some("vs_main"),
-            buffers: &[Vertex::get_descriptor()],
-            compilation_options: PipelineCompilationOptions::default(), 
-        };
-
-        let fragment_state = FragmentState {
-            module: &shader_library.basic_shader_module,
-            entry_point: Some("fs_main"),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: surface_configuration.format,
-                blend: Some(wgpu::BlendState::REPLACE),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-            compilation_options: PipelineCompilationOptions::default(),
-        };
+        let render_pipeline_manager = RenderPipelineManager::new();
 
         let primitive_state = PrimitiveState {
             topology: PrimitiveTopology::TriangleList,
@@ -184,34 +154,49 @@ impl RenderState {
             alpha_to_coverage_enabled: false
         };
 
-        let render_pipeline_description = RenderPipelineDescriptor {
-            label: Some("Render pipeline"),
-            layout: Some(&pipe_line_layout),
-            vertex: vertex_state,
-            fragment: Some(fragment_state),
-            primitive: primitive_state,
-            depth_stencil: None,
-            multisample: multisample_state,
-            multiview: None,
-            cache: None,
-        };
+        render_pipeline_manager.create_render_pipeline(
+            RenderPipelineName::DefaultRenderPipeline, 
+            Some("Default Render Pipeline"), 
+            &device, 
+            &surface_configuration, 
+            &[&bind_group_layout_manager.get_bind_group_layout(&BindGroupLayoutName::DefaultBindGroupLayout).unwrap()], 
+            &shader_library.basic_shader_module, 
+            primitive_state, 
+            multisample_state);
 
-        let render_pipeline = device.create_render_pipeline(&render_pipeline_description);
-
-        let buffer_init_descriptor = BufferInitDescriptor {
-            label: Some("Vertex buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
+        let square_vertex_buffer_init_descriptor = BufferInitDescriptor {
+            label: Some("Square Vertex buffer"),
+            contents: bytemuck::cast_slice(SQUARE_VERTICES),
             usage: BufferUsages::VERTEX,
         };
 
-        let vertex_buffer = device.create_buffer_init(&buffer_init_descriptor);
+        let square_vertex_buffer = device.create_buffer_init(&square_vertex_buffer_init_descriptor);
 
-        let num_vertices = VERTICES.len() as u32;
+        let square_index_buffer_init_descriptor = BufferInitDescriptor {
+            label: Some("Square index buffer"),
+            contents: bytemuck::cast_slice(SQUARE_INDEX),
+            usage: BufferUsages::INDEX,
+        };
+
+        let square_index_buffer = device.create_buffer_init(&square_index_buffer_init_descriptor);
+
+        let material_manager = MaterialManager::new();
+    
+        let texture_for_default_material = texture_atlas_manager.get_texture_info(1, 1).unwrap();
+
+        let default_material = Material {
+            uv_scale: texture_for_default_material.uv_scale,
+            uv_offset: texture_for_default_material.uv_offset,
+            bind_group: bind_group_manager.get_bind_group(BindGroupName::TextureAtlas1BindGroup).unwrap(),
+            render_pipeline: render_pipeline_manager.get_render_pipeline(RenderPipelineName::DefaultRenderPipeline).unwrap(),
+        };
+
+        material_manager.add_material(0, Rc::new(default_material));
 
         let render_state = Self {
             device: device,
             surface_configuration: surface_configuration,
-            size: size,
+            window_size: window_size,
             queue: queue,
             window: window,
             adapter: adapter,
@@ -219,19 +204,21 @@ impl RenderState {
             instance: instance,
             surface_texture_format: surface_texture_format,
             shader_library: shader_library,
-            texture_manager: texture_manager,
             sampler_manager: sampler_manager,
             bind_group_layout_manager: bind_group_layout_manager,
-            sprite_material_manager: sprite_material_manager,
-            render_pipeline: render_pipeline,
-            vertex_buffer: vertex_buffer,
-            num_vertices: num_vertices, 
+            bind_group_manager: bind_group_manager,
+            texture_atlas_manager: texture_atlas_manager,
+            render_pipeline_manager: render_pipeline_manager,
+            material_manager: material_manager,
+            square_vertex_buffer: square_vertex_buffer,
+            square_index_buffer: square_index_buffer,
+            index_format: IndexFormat::Uint16,
         };
 
         return render_state; 
     }
 
-    pub fn render(&mut self) {
+    pub fn draw_call(&mut self, render_batches: &[RenderBatch]) {
         let surface_current_texture = self.surface.get_current_texture().unwrap();
 
         let current_texture =  surface_current_texture.texture.clone(); 
@@ -268,15 +255,16 @@ impl RenderState {
         };
 
         let mut render_pass = command_encoder.begin_render_pass(&render_pass_description);
-      
-        let default_bind_group = self.sprite_material_manager.get_sprite_material(
-            "default_sprite_material"
-        ).unwrap().get_bind_group();
-
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &*default_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(0..self.num_vertices, 0..1);
+        
+        for render_batch in render_batches {
+            render_pass.set_pipeline(&render_batch.render_pipeline);
+            render_pass.set_bind_group(0, render_batch.bind_group.as_ref(), &[]);
+            render_pass.set_vertex_buffer(0, self.square_vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, render_batch.instance_buffer.slice(..));
+            render_pass.set_index_buffer(self.square_index_buffer.slice(..), self.index_format);
+            render_pass.draw_indexed(0..6, 0, 0..render_batch.instance_count);      
+        }
+        
 
         drop(render_pass);
 
@@ -286,7 +274,7 @@ impl RenderState {
 
         surface_current_texture.present(); 
     }
-
+ 
     pub fn reconfigure_surface(&mut self, physical_size: PhysicalSize<u32>) {
 
     }

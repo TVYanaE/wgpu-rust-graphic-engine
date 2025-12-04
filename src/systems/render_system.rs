@@ -4,11 +4,10 @@ use crate::{
     managers::{
         ecs_manager::ECSManager,
     },
-    components::sprite::Sprite,
 };
 
 pub struct RenderSystem {
-    pub render_state: ,
+
 }
 
 impl System for RenderSystem {
