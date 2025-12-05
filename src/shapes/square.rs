@@ -1,5 +1,5 @@
 use crate::{
-    vertex::Vertex
+    buffers_layouts::Vertex
 };
 
 pub const SQUARE_VERTICES: &[Vertex] = &[

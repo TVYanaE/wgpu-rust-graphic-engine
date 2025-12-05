@@ -1,37 +1,33 @@
 use std::{
     collections::{HashMap},
 };
-
 use crate::{
     aliases::ComponentStorageID,
     traits::{any_storage_trait::AnyStorage},
     managers::{
         entity_manager::EntityManager,
-        system_manager::SystemManager,
     },
     structures::{
         entity::Entity,
         storages::component_storage::ComponentStorage,
-    }, 
+    },  
 };
 
 pub struct ECSManager {
     entity_manager: EntityManager,
-    system_manager: SystemManager, 
     entity_storage: Vec<Entity>,
     component_storages: HashMap<ComponentStorageID, Box<dyn AnyStorage>>
 }
 
 impl ECSManager {
-    pub fn new(entity_manager: EntityManager, system_manager: SystemManager) -> Self {
+    pub fn new(entity_manager: EntityManager ) -> Self {
         Self { 
             entity_manager: entity_manager,
-            system_manager: system_manager,
             entity_storage: Vec::new(), 
             component_storages: HashMap::new(),
         }
-    }
-    
+    } 
+
     pub fn create_entity(&mut self) -> Entity {
         let creating_entity = self.entity_manager.create_entity();
         self.entity_storage.push(creating_entity);
@@ -74,5 +70,5 @@ impl ECSManager {
             .as_any_mut()
             .downcast_mut::<ComponentStorage<T>>()
             .unwrap()
-    }
+    } 
 }

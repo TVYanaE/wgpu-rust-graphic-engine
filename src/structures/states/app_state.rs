@@ -14,6 +14,7 @@ use crate::{
             render_state::RenderState,
         },
         timer::Timer,
+        batcher::Batcher,
     },
     enums::{
         errors::EngineError,
@@ -23,7 +24,8 @@ use crate::{
 #[derive(Default)]
 pub struct AppState {
     ecs_state: Option<ECSState>,
-    render_state: Option<RenderState>
+    render_state: Option<RenderState>,
+    batcher: Option<Batcher>,
 }
 
 impl AppState {
@@ -43,39 +45,63 @@ impl AppState {
         return Ok(());
     }
 
-    pub fn redraw_handle(&mut self) -> Result<(), EngineError> {
+    pub fn init_batcher(&mut self) -> Result<(), EngineError> {
 
-        self.render_state.as_mut().unwrap().render();
+        let batcher = Batcher::new();
+        
+        self.batcher = Some(batcher);
+
         return Ok(());
     }
 
-    pub fn resize_handle(&mut self, physical_size: PhysicalSize<u32>) -> Result<(), EngineError> {
+    pub fn init_systems(&mut self) -> Result<(), EngineError> {
+        
+        let material_manager = self.render_state.as_ref().unwrap().material_manager.clone();
+
+        self.ecs_state.as_mut().unwrap().init_systems(material_manager);
+        return Ok(());
+    }
+
+    pub fn redraw_handle(&mut self) -> Result<(), EngineError> {
+
+        let render_batches = self.batcher.as_ref().unwrap().get_render_batches();
+
+        self.render_state.as_mut().unwrap().draw_call(render_batches);
+
+        return Ok(());
+    }
+
+    pub fn resize_handle(&mut self, _physical_size: PhysicalSize<u32>) -> Result<(), EngineError> {
 
         return Ok(());
     }
 
     pub fn keyboard_input_handle(
         &mut self, 
-        event_loop: &ActiveEventLoop, 
-        key_code: KeyCode, 
-        key_is_pressed: bool
+        _event_loop: &ActiveEventLoop, 
+        _key_code: KeyCode, 
+        _key_is_pressed: bool
     ) -> Result<(), EngineError> {
 
         return Ok(());
     }
 
-    pub fn run_fixed_time_tasks(&mut self, timer: &Timer) -> Result<(), EngineError> {
+    pub fn run_fixed_time_tasks(&mut self, _timer: &Timer) -> Result<(), EngineError> {
 
         return Ok(());
     }
 
-    pub fn run_real_time_tasks(&mut self, timer: &Timer) -> Result<(), EngineError> {
-
+    pub fn run_real_time_tasks(&mut self, _timer: &Timer) -> Result<(), EngineError> {
+        self.ecs_state.as_mut().unwrap().run_real_time_tasks(); 
+        
         return Ok(());
     }
 
     pub fn render_prepare(&mut self) -> Result<(), EngineError> { 
-        self.ecs_state.as_mut().unwrap().render_prepared();
+        self.ecs_state.as_mut().unwrap().render_prepare();
+        let render_items = self.ecs_state.as_ref().unwrap().get_render_items();
+        self.batcher.as_mut().unwrap().batching(render_items, &self.render_state.as_ref().unwrap().device); 
+
         return Ok(());
     }
 

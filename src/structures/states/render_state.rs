@@ -1,7 +1,5 @@
 use std::{
-    sync::Arc,
-    rc::Rc,
-    env::current_exe,
+    env::current_exe, path::PathBuf, rc::Rc, sync::Arc
 };
 use wgpu::{
     Instance, InstanceDescriptor, 
@@ -42,6 +40,7 @@ use crate::{
     },
 };
 
+#[allow(dead_code)]
 pub struct RenderState {
     pub instance: Instance,
     pub window: Arc<Window>,
@@ -57,7 +56,7 @@ pub struct RenderState {
     pub sampler_manager: SamplerManager,
     pub bind_group_layout_manager: BindGroupLayoutManager,
     pub bind_group_manager: BindGroupManager,
-    pub material_manager: MaterialManager,
+    pub material_manager: Rc<MaterialManager>,
     pub render_pipeline_manager: RenderPipelineManager,
     pub square_vertex_buffer: Buffer,
     pub square_index_buffer: Buffer,
@@ -105,11 +104,11 @@ impl RenderState {
         
         let texture_atlas_manager= TextureAtlasManager::new();
 
-        let execute_dir = current_exe().unwrap().parent().unwrap().to_path_buf();
+        //let execute_dir = current_exe().unwrap().parent().unwrap().to_path_buf();
 
-        let texture_atlas_file_path = execute_dir.clone().join("assets/texture_atlases/texture_atlas_1/texture_atlas_1.ktx2"); 
+        let texture_atlas_file_path = PathBuf::from("assets/texture_atlases/texture_atlas_1/texture_atlas_1.ktx2"); 
 
-        let texture_atlas_meta_path = execute_dir.join("assets/texture_atlases/texture_atlas_1/texture_atlas_1.json");
+        let texture_atlas_meta_path = PathBuf::from("assets/texture_atlases/texture_atlas_1/texture_atlas_1.json");
 
         texture_atlas_manager.load_texture_atlas(
             1, 
@@ -182,7 +181,7 @@ impl RenderState {
 
         let material_manager = MaterialManager::new();
     
-        let texture_for_default_material = texture_atlas_manager.get_texture_info(1, 1).unwrap();
+        let texture_for_default_material = texture_atlas_manager.get_texture_info(1, 1).unwrap(); 
 
         let default_material = Material {
             uv_scale: texture_for_default_material.uv_scale,
@@ -209,7 +208,7 @@ impl RenderState {
             bind_group_manager: bind_group_manager,
             texture_atlas_manager: texture_atlas_manager,
             render_pipeline_manager: render_pipeline_manager,
-            material_manager: material_manager,
+            material_manager: Rc::new(material_manager),
             square_vertex_buffer: square_vertex_buffer,
             square_index_buffer: square_index_buffer,
             index_format: IndexFormat::Uint16,

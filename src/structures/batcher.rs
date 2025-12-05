@@ -17,14 +17,21 @@ use crate::{
 
 
 pub struct Batcher {
-          
+    render_batch_cache: Vec<RenderBatch>,          
 }
 
 impl Batcher {
-    pub fn batching(&self, render_items: &[RenderItem], device: &Device, ) -> Vec<RenderBatch> {
+    pub fn new() -> Self {
+        Self { render_batch_cache: Vec::new() }
+    }
+
+    pub fn batching(&mut self, render_items: &[RenderItem], device: &Device, ) {
         let mut render_groups: HashMap<*const Material, Vec<RenderItem>> = HashMap::new(); 
-        let mut render_batches = Vec::new();
-        
+       
+        if !self.render_batch_cache.is_empty() {
+            self.render_batch_cache.clear();
+        }
+
         for render_item in render_items {
             let key = Rc::as_ptr(&render_item.material);
             render_groups.entry(key).or_default().push(render_item.clone());
@@ -36,15 +43,22 @@ impl Batcher {
             let instances: Vec<InstanceVertex> = group
             .iter()
             .map(|render_item| {
+                
+                //test 
+                /* println!("from batcher uv_offset x = {}", render_item.material.uv_offset[0]);
+                println!("from batcher uv_offset y = {}", render_item.material.uv_offset[1]);
+                println!("from batcher uv_scale x = {}", render_item.material.uv_scale[0]);
+                println!("from batcher uv_scale y = {}", render_item.material.uv_scale[1]); */
+
                 InstanceVertex {
                     instance_position: render_item.instance_position,
                     instance_size: render_item.instance_size,
                     uv_offset: render_item.material.uv_offset,
-                    uv_scale: render_item.material.uv_offset,
+                    uv_scale: render_item.material.uv_scale,
             }
             })
             .collect();
-            
+
             let instance_buffer = device.create_buffer_init(
                 &BufferInitDescriptor {
                     label: Some("Instance Buffer"),
@@ -60,10 +74,11 @@ impl Batcher {
                 bind_group: material.bind_group.clone(),
             };
 
-            render_batches.push(render_batch);
-            
-        }
-        
-        return render_batches;
+            self.render_batch_cache.push(render_batch); 
+        }    
+    }
+
+    pub fn get_render_batches(&self) -> &[RenderBatch] {
+        &self.render_batch_cache
     }
 }

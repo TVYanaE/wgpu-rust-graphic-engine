@@ -1,4 +1,3 @@
-mod camera;
 mod buffers_layouts;
 mod shapes;
 mod shader_library;
@@ -49,7 +48,10 @@ impl ApplicationHandler for App {
 
         let app_state_ref = self.app_state.as_mut().unwrap();
 
-        pollster::block_on(app_state_ref.init_render_state(window.clone()));
+        pollster::block_on(app_state_ref.init_render_state(window.clone())).unwrap();
+
+        app_state_ref.init_systems().unwrap();
+        app_state_ref.init_batcher().unwrap();
 
         let timer = self.timer.as_mut().unwrap();
 

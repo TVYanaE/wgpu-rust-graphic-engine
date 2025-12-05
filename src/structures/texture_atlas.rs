@@ -16,10 +16,8 @@ use ktx2::{
 };
 use serde::{Serialize, Deserialize};
 use crate::{
-    aliases::{InternalTextureID},
-    structures::{
-        texture_info::TextureInfo, 
-    },
+    aliases::InternalTextureID,
+    structures::texture_info::{self, TextureInfo},
 };
 
 // for parsing JSON meta 
@@ -56,7 +54,7 @@ struct TexturesInfoRaw {
     pub meta: Meta,
 }
 
-
+#[allow(dead_code)]
 pub struct TextureAtlas {
     data: Texture,
     texture_view: Rc<TextureView>,
@@ -89,6 +87,7 @@ impl TextureAtlas {
         for (texture_number, image) in textures_info_raw.frames.into_iter().enumerate() {
             let internal_texture_id = texture_number as InternalTextureID;
 
+
             let texture_position_x = image.frame.x as f32;
             let texture_position_y = image.frame.y as f32;
             let texture_size_x = image.frame.w as f32;
@@ -105,6 +104,7 @@ impl TextureAtlas {
             };
 
             texture_info_storage.insert(internal_texture_id, texture_info);
+ 
         }  
 
         let ktx_texture = Reader::new(texture_bytes).unwrap();
@@ -133,7 +133,7 @@ impl TextureAtlas {
             size: texture_size,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: texture_format,
+            format: texture_format.clone(),
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
             mip_level_count: ktx_texture_header.level_count,
@@ -188,8 +188,20 @@ impl TextureAtlas {
             );
         }
 
-        let texture_view = texture.create_view(&TextureViewDescriptor::default());
-        
+        let texture_view_descriptor = TextureViewDescriptor {
+            label: Some("texture_vie"),
+            format: Some(texture_format),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            usage: Some(wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST),
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: Some(ktx_texture_header.level_count),
+            base_array_layer: 0,
+            array_layer_count: None,
+        };
+
+        let texture_view = texture.create_view(&texture_view_descriptor); 
+
         Self { 
             data: texture, 
             texture_view: Rc::new(texture_view), 

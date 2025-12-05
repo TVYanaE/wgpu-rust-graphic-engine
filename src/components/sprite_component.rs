@@ -6,5 +6,7 @@ use crate::{
 pub struct SpriteComponent {
     pub position_x: f32,
     pub position_y: f32,
+    pub size_x: f32,
+    pub size_y: f32,
     pub material_id: MaterialID,
 }
