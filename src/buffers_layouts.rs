@@ -15,8 +15,8 @@ pub struct Vertex {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct InstanceVertex {
-    pub instance_position: [f32; 2],
-    pub instance_size: [f32; 2],
+    pub instance_position: [f32; 3],
+    pub instance_size: [f32; 3],
     pub uv_offset: [f32; 2],
     pub uv_scale: [f32; 2]
 }
@@ -38,20 +38,20 @@ const INSTANCE_ATTRIBUTES: &[VertexAttribute] = &[
     VertexAttribute {
         offset: 0,
         shader_location: 2,
-        format: VertexFormat::Float32x2
+        format: VertexFormat::Float32x3
     },
     VertexAttribute {
-        offset: size_of::<[f32; 2]>() as BufferAddress,
+        offset: size_of::<[f32; 3]>() as BufferAddress,
         shader_location: 3,
-        format: VertexFormat::Float32x2,
+        format: VertexFormat::Float32x3,
     },
     VertexAttribute {
-        offset: size_of::<[f32; 4]>() as BufferAddress,
+        offset: size_of::<[f32; 6]>() as BufferAddress,
         shader_location: 4,
         format: VertexFormat::Float32x2,
     },
     VertexAttribute {
-        offset: size_of::<[f32; 6]>() as BufferAddress,
+        offset: size_of::<[f32; 8]>() as BufferAddress,
         shader_location: 5,
         format: VertexFormat::Float32x2
     },

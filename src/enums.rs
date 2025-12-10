@@ -5,3 +5,5 @@ pub mod render_pipeline_name_enum;
 pub mod sampler_name_enum;
 pub mod shader_module_name_enum;
 pub mod material_name_enum;
+pub mod engine_event_enum;
+

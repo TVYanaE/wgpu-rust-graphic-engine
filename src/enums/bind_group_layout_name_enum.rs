@@ -5,4 +5,5 @@
 )]
 pub enum BindGroupLayoutName{
     DefaultBindGroupLayout,
+    CameraBindGroupLayout,
 }

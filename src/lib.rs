@@ -8,14 +8,14 @@ mod structures;
 mod functions;
 mod aliases;
 mod components;
-mod systems;
+mod consts;
 
 use std::{
     sync::Arc,
 };
 use winit::{
     application::ApplicationHandler,
-    event::{WindowEvent, KeyEvent, StartCause},
+    event::{WindowEvent, KeyEvent, StartCause, },
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::{Window, WindowId},
     keyboard::{PhysicalKey},
@@ -97,9 +97,11 @@ impl ApplicationHandler for App {
                     physical_key: PhysicalKey::Code(key_code),
                     state: key_state,
                     ..
-                }, 
-                .. 
-            } => self.app_state.as_mut().unwrap().keyboard_input_handle(event_loop, key_code, key_state.is_pressed()).unwrap(),
+                },
+                ..
+            } => {
+                self.app_state.as_mut().unwrap().keyboard_input_handle(key_code, key_state.is_pressed()).unwrap();
+            }
             _ => (),
         }
     }
@@ -108,8 +110,10 @@ impl ApplicationHandler for App {
         match cause {
             StartCause::Init => {
                 let mut app_state = AppState::default();
-                app_state.init_ecs_state().unwrap();
-                
+
+                app_state.init_logic_state().unwrap();
+                app_state.init_event_buffer().unwrap();
+
                 let timer = Timer::new();
                 
                 self.app_state = Some(app_state); 

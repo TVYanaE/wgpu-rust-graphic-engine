@@ -1,5 +1,5 @@
 use std::{
-    env::current_exe, path::PathBuf, rc::Rc, sync::Arc
+    path::PathBuf, rc::Rc, sync::Arc
 };
 use wgpu::{
     Instance, InstanceDescriptor, 
@@ -10,7 +10,8 @@ use wgpu::{
     Surface, SurfaceConfiguration, RenderPassDescriptor, RenderPassColorAttachment,
     TextureUsages, CompositeAlphaMode, PresentMode,
     PrimitiveState, IndexFormat,
-    PrimitiveTopology, MultisampleState, Buffer, BufferUsages,
+    PrimitiveTopology, MultisampleState, 
+    Buffer, BufferUsages, BindGroupDescriptor, BindGroupEntry,
     util::{BufferInitDescriptor, DeviceExt}, 
 };
 use winit::{
@@ -37,6 +38,7 @@ use crate::{
     structures::{
         material::Material,
         render_batch::RenderBatch,
+        camera::{CameraUniformMatrix, CameraStorage},
     },
 };
 
@@ -61,6 +63,7 @@ pub struct RenderState {
     pub square_vertex_buffer: Buffer,
     pub square_index_buffer: Buffer,
     pub index_format: IndexFormat,
+    pub camera_storage: CameraStorage,
 }
 
 impl RenderState {
@@ -133,7 +136,39 @@ impl RenderState {
             &default_sampler, 
             Some("Texture atlas 1 bind group"), 
             BindGroupName::TextureAtlas1BindGroup,
-        );  
+        );
+
+        let camera_uniform_matrix = CameraUniformMatrix::new(); 
+
+        let camera_uniform_buffer = device.create_buffer_init(&
+            BufferInitDescriptor {
+                label: Some("Camera Uniform Buffer"),
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                contents: bytemuck::cast_slice(&[camera_uniform_matrix]),
+            }
+        );
+
+        let camera_bind_group_layout = bind_group_layout_manager
+            .get_bind_group_layout(&BindGroupLayoutName::CameraBindGroupLayout)
+            .unwrap();
+
+        let camera_bind_group = device.create_bind_group(
+            &BindGroupDescriptor {
+                layout: camera_bind_group_layout.as_ref(),
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: camera_uniform_buffer.as_entire_binding(), 
+                    }, 
+                ],
+                label: Some("Camera Bind Group") 
+            }
+        ); 
+
+        let camera_storage = CameraStorage {
+            camera_bind_group: camera_bind_group,
+            camera_uniform_buffer: camera_uniform_buffer,
+        };
 
         let render_pipeline_manager = RenderPipelineManager::new();
 
@@ -158,7 +193,10 @@ impl RenderState {
             Some("Default Render Pipeline"), 
             &device, 
             &surface_configuration, 
-            &[&bind_group_layout_manager.get_bind_group_layout(&BindGroupLayoutName::DefaultBindGroupLayout).unwrap()], 
+            &[
+                &camera_bind_group_layout,
+                &bind_group_layout_manager.get_bind_group_layout(&BindGroupLayoutName::DefaultBindGroupLayout).unwrap(), 
+            ], 
             &shader_library.basic_shader_module, 
             primitive_state, 
             multisample_state);
@@ -180,17 +218,29 @@ impl RenderState {
         let square_index_buffer = device.create_buffer_init(&square_index_buffer_init_descriptor);
 
         let material_manager = MaterialManager::new();
-    
-        let texture_for_default_material = texture_atlas_manager.get_texture_info(1, 1).unwrap(); 
+   
+        // ant material
+        let texture_for_ant_material = texture_atlas_manager.get_texture_info(1, 0).unwrap(); 
 
-        let default_material = Material {
-            uv_scale: texture_for_default_material.uv_scale,
-            uv_offset: texture_for_default_material.uv_offset,
+        let ant_material = Material {
+            uv_scale: texture_for_ant_material.uv_scale,
+            uv_offset: texture_for_ant_material.uv_offset,
             bind_group: bind_group_manager.get_bind_group(BindGroupName::TextureAtlas1BindGroup).unwrap(),
             render_pipeline: render_pipeline_manager.get_render_pipeline(RenderPipelineName::DefaultRenderPipeline).unwrap(),
         };
 
-        material_manager.add_material(0, Rc::new(default_material));
+        // pig material
+        let texture_for_pig_material = texture_atlas_manager.get_texture_info(1, 1).unwrap(); 
+
+        let pig_material = Material {
+            uv_scale: texture_for_pig_material.uv_scale,
+            uv_offset: texture_for_pig_material.uv_offset,
+            bind_group: bind_group_manager.get_bind_group(BindGroupName::TextureAtlas1BindGroup).unwrap(),
+            render_pipeline: render_pipeline_manager.get_render_pipeline(RenderPipelineName::DefaultRenderPipeline).unwrap(),
+        };
+
+        material_manager.add_material(0, Rc::new(ant_material));
+        material_manager.add_material(1, Rc::new(pig_material));
 
         let render_state = Self {
             device: device,
@@ -212,6 +262,7 @@ impl RenderState {
             square_vertex_buffer: square_vertex_buffer,
             square_index_buffer: square_index_buffer,
             index_format: IndexFormat::Uint16,
+            camera_storage: camera_storage,
         };
 
         return render_state; 
@@ -255,16 +306,17 @@ impl RenderState {
 
         let mut render_pass = command_encoder.begin_render_pass(&render_pass_description);
         
+        render_pass.set_bind_group(0, &self.camera_storage.camera_bind_group, &[]);
+
         for render_batch in render_batches {
             render_pass.set_pipeline(&render_batch.render_pipeline);
-            render_pass.set_bind_group(0, render_batch.bind_group.as_ref(), &[]);
+            render_pass.set_bind_group(1, render_batch.bind_group.as_ref(), &[]);
             render_pass.set_vertex_buffer(0, self.square_vertex_buffer.slice(..));
             render_pass.set_vertex_buffer(1, render_batch.instance_buffer.slice(..));
             render_pass.set_index_buffer(self.square_index_buffer.slice(..), self.index_format);
             render_pass.draw_indexed(0..6, 0, 0..render_batch.instance_count);      
         }
         
-
         drop(render_pass);
 
         let command_buffer = command_encoder.finish();
@@ -275,7 +327,14 @@ impl RenderState {
     }
  
     pub fn reconfigure_surface(&mut self, physical_size: PhysicalSize<u32>) {
+        if physical_size.width == 0 || physical_size.height == 0 {
+            return; 
+        }
 
+        self.surface_configuration.width = physical_size.width;
+        self.surface_configuration.height = physical_size.height;
+
+        self.surface.configure(&self.device, &self.surface_configuration); 
     }
  
 }

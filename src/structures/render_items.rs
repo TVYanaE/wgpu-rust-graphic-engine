@@ -7,8 +7,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct RenderItem {
-    pub instance_position: [f32; 2],
-    pub instance_size: [f32; 2],
+    pub instance_position: [f32; 3],
+    pub instance_size: [f32; 3],
     pub material: Rc<Material>,
 }
 

@@ -2,11 +2,15 @@ use crate::{
     aliases::MaterialID,
 };
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
-pub struct SpriteComponent {
-    pub position_x: f32,
-    pub position_y: f32,
-    pub size_x: f32,
-    pub size_y: f32,
+pub struct SpriteComponent { 
     pub material_id: MaterialID,
+}
+
+
+impl Default for SpriteComponent {
+    fn default() -> Self {
+        Self { material_id: 0 }
+    }
 }

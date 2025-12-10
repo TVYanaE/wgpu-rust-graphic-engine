@@ -1,43 +1,64 @@
-
+use glam::{Vec3};
 use crate::{
-    structures::{
-        entity::Entity,
+    managers::{
+        entity_id_manager::EntityIDManager,
     },
-    aliases::{EntityID, GenerationID},
+    components::{
+        sprite_component::SpriteComponent,
+    },
 };
 
+
 pub struct EntityManager {
-    generations: Vec<GenerationID>,
-    free_entity_id_list: Vec<EntityID>, 
+    entity_id_manager: EntityIDManager,
+    is_test_object_exsist: bool,
+    is_test_camera_exsist: bool,
 }
+
 
 impl EntityManager {
     pub fn new() -> Self {
-        Self { 
-            generations: Vec::new(), 
-            free_entity_id_list: Vec::new() 
+        let entity_id_manager = EntityIDManager::new();
+
+        Self {
+            entity_id_manager: entity_id_manager,
+            is_test_object_exsist: false,
+            is_test_camera_exsist: false,
         }
     }
 
-    pub fn create_entity(&mut self) -> Entity {
-        if let Some(entity_id) = self.free_entity_id_list.pop() {
-            let generation = self.generations[entity_id as usize];
-            Entity { entity_id, generation }
+    pub fn create_test_object(&mut self) {
+        if self.is_test_object_exsist {
+            return;
         }
-        else {
-            let entity_id = self.generations.len() as EntityID;
-            self.generations.push(0);
-            Entity { entity_id, generation: 0 }
-        }
-    }
 
-    pub fn destroy_entity(&mut self, entity: Entity) {
-        let entity_id = entity.entity_id as usize;
-        self.generations[entity_id] += 1;
-        self.free_entity_id_list.push(entity.entity_id);
-    }
+        let test_object_entity_1 = self.entity_id_manager.create_entity();
 
-    pub fn is_alive(&self, entity: &Entity) -> bool {
-        self.generations[entity.entity_id as usize] == entity.generation
-    }
+        let test_object_sprite_component_1 = SpriteComponent {
+            size_x: 1.0,
+            size_y: 1.0,
+            size_z: 0.0,
+            position_x: 0.0,
+            position_y: 0.0,
+            position_z: 0.0,
+            material_id: 0,
+        };
+
+        let test_object_entity_2 = entity_manager.create_entity();
+
+        let test_object_sprite_component_2 = SpriteComponent {
+            size_x: 1.0,
+            size_y: 1.0,
+            size_z: 0.0,
+            position_x: 1.0,
+            position_y: 1.0,
+            position_z: 0.0,
+            material_id: 1,
+        };
+
+        ecs_manager_ref.add_component_to_entity(test_object_entity_1, test_object_sprite_component_1);
+        ecs_manager_ref.add_component_to_entity(test_object_entity_2, test_object_sprite_component_2);
+
+        self.is_test_object_exsist = true;
+    } 
 }
