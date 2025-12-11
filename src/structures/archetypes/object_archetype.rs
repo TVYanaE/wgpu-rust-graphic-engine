@@ -1,5 +1,8 @@
+use std::{
+    collections::{HashMap,},
+};
 use crate::{
-    aliases::{EntityID, VacantPlaceInChunk},
+    aliases::{EntityID, VacantPlaceInChunk, ChunkArchetypeIndex},
     structures::{
         chunks::{
             object_archetype_chunk::ObjectArchetypeChunk,
@@ -17,6 +20,7 @@ use crate::{
 
 
 pub struct ObjectArchetype {
+    entities_map: HashMap<EntityID, ChunkArchetypeIndex>,
     object_chunks: Vec<ObjectArchetypeChunk>,
     vacant_places_in_chunk: Vec<VacantPlaceInChunk>,
     free_chunks: Vec<u64>, // bit mask 1 - free, 0 - occupied
@@ -29,6 +33,7 @@ impl ObjectArchetype {
         let created_chunks = vec![0u64];
 
         Self {
+            entities_map: HashMap::new(),
             object_chunks: Vec::new(),
             vacant_places_in_chunk: Vec::new(),
             free_chunks: free_chunks,
@@ -44,6 +49,8 @@ impl ObjectArchetype {
         sprite_component: SpriteComponent,
     ) -> Result<(), ArchetypeError> {
         for (cluster_index, created_chunks_current_bit_mask) in self.created_chunks.iter().enumerate() {
+            // cluster indes is index of bit mask element in created chunks 
+            // free_chunks is same for free chunks 
             let free_chunks_current_bit_maks = self.free_chunks[cluster_index];
 
             let cros_bit_mask = free_chunks_current_bit_maks & created_chunks_current_bit_mask;
@@ -66,6 +73,8 @@ impl ObjectArchetype {
                         }
 
                         self.vacant_places_in_chunk[chunk_index] = vacant_place_in_chunk;
+
+                        self.entities_map.insert(entity_id, chunk_index);
 
                         return Ok(());
                     },
@@ -92,6 +101,8 @@ impl ObjectArchetype {
         let new_chunk_index = self.object_chunks.len();
 
         self.object_chunks.push(new_chunk); 
+
+        self.entities_map.insert(entity_id, new_chunk_index);
 
         self.vacant_places_in_chunk.push(free_places_in_new_chunk);
 

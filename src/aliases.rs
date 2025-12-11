@@ -8,3 +8,4 @@ pub type MaterialID = u32;
 pub type EntityID = u32;
 pub type VacantPlaceInChunk = u32;
 pub type EntityChunkIndex = usize;
+pub type ChunkArchetypeIndex = usize;
