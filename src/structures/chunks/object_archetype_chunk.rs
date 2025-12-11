@@ -1,5 +1,5 @@
 use crate::{
-    aliases::{EntityID, VacantPlaceAmount, EntityChunkIndex},
+    aliases::{EntityID, VacantPlaceInChunk, EntityChunkIndex},
     components::{
         size_component::SizeComponent,
         position_component::PositionComponent,
@@ -9,7 +9,7 @@ use crate::{
     enums::errors::ChunkError,
 };
 
-pub struct ObjectArchetypChunk {
+pub struct ObjectArchetypeChunk {
     entities_map: [EntityID; OBJECT_ARCHETYPE_CHUNK_SIZE],
     positions: [PositionComponent; OBJECT_ARCHETYPE_CHUNK_SIZE],
     sizes: [SizeComponent; OBJECT_ARCHETYPE_CHUNK_SIZE],
@@ -18,7 +18,7 @@ pub struct ObjectArchetypChunk {
     free_places: u16 // bit maks for free places 
 }
 
-impl ObjectArchetypChunk {
+impl ObjectArchetypeChunk {
     pub fn new() -> Self {
         let positions = [PositionComponent::default(); OBJECT_ARCHETYPE_CHUNK_SIZE];
         let sizes = [SizeComponent::default(); OBJECT_ARCHETYPE_CHUNK_SIZE];
@@ -40,9 +40,13 @@ impl ObjectArchetypChunk {
     // 0 1 2 3 4 5 6 7 
     // 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
 
+    fn entity_index_to_bit_index(&self, entity_index: EntityChunkIndex) -> u16 {
+        (u16::BITS as u16) - 1 - (entity_index as u16)
+    }
+    
     // true - render, false - no render  
     fn set_render_activity_by_index(&mut self, entity_index: EntityChunkIndex, activity: bool) {
-        let bit_index_delta = (u16::BITS as u16) - 1 - (entity_index as u16); 
+        let bit_index_delta = self.entity_index_to_bit_index(entity_index); 
         match activity {
             true => { self.activities |= 1u16 << bit_index_delta; },
             false => { self.activities &= !(1u16 << bit_index_delta) }
@@ -51,7 +55,7 @@ impl ObjectArchetypChunk {
 
     // true - place free, false - place is ocupied
     fn set_free_place_bit(&mut self, entity_index: EntityChunkIndex, free: bool) {
-        let bit_index_delta = (u16::BITS as u16) - 1 - (entity_index as u16);
+        let bit_index_delta = self.entity_index_to_bit_index(entity_index); 
         match free {
             true => { self.free_places |= 1u16 << bit_index_delta; },
             false => { self.free_places &= !(1u16 << bit_index_delta) }
@@ -59,8 +63,8 @@ impl ObjectArchetypChunk {
     }
    
     fn is_active_by_index(&self, entity_index: EntityChunkIndex) -> bool {
-        let bit_index_delta = (u16::BITS as u16) - 1 - (entity_index as u16);
-        (self.activities & (1u16 << bit_index_delta))
+        let bit_index_delta = self.entity_index_to_bit_index(entity_index);  
+        (self.activities & (1u16 << bit_index_delta)) != 0
     }
 
     // 0 1 2 3 4 5 6 7 8
@@ -73,7 +77,7 @@ impl ObjectArchetypChunk {
         position_component: PositionComponent,
         size_component: SizeComponent,
         sprite_component: SpriteComponent,
-    ) -> Result<VacantPlaceAmount, ChunkError> {
+    ) -> Result<VacantPlaceInChunk, ChunkError> {
         if self.free_places.count_ones() == 0 {
             return Err(ChunkError::NotEnoughSpaceInChunk("Object Archetype Chunk".to_string()));
         }
@@ -92,7 +96,7 @@ impl ObjectArchetypChunk {
         return Ok(self.free_places.count_ones());
     }
 
-    pub fn remove_entity_from_chunk(&mut self, entity_id: EntityID) -> Result<VacantPlaceAmount, ChunkError> {
+    pub fn remove_entity_from_chunk(&mut self, entity_id: EntityID) -> Result<VacantPlaceInChunk, ChunkError> {
         let entity_index = self.entities_map.iter().position(|current_entity| {
             *current_entity == entity_id
         })

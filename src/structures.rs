@@ -10,3 +10,4 @@ pub mod render_batch;
 pub mod event_buffer;
 pub mod systems;
 pub mod chunks;
+pub mod archetypes;

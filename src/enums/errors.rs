@@ -25,3 +25,10 @@ pub enum ChunkError {
     #[error("Choosed Chunk doesnt contain entity. Chunk: {0}")]
     ChunkDoesntContainEntity(String)
 }
+
+#[allow(dead_code)]
+#[derive(Error, Debug)]
+pub enum ArchetypeError {
+    #[error("Wrong determination of free chunk. Archetype: {0}")]
+    EntityAddingErrorInChunk(String)
+}
