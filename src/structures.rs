@@ -2,8 +2,10 @@
 pub mod archetypes;
 pub mod chunks;
 pub mod components;
+pub mod descriptors;
 pub mod managers;
 pub mod orchestrators;
+pub mod quartzes;
 pub mod states;
 pub mod systems;
 
@@ -14,6 +16,8 @@ pub mod buffers_layouts;
 pub mod camera;
 pub mod event_buffer_recorder;
 pub mod external_event_buffer;
+pub mod frame_phase;
+pub mod frame_phase_batch;
 pub mod internal_event_buffer;
 pub mod material;
 pub mod render_batch;
