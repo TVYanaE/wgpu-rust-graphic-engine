@@ -6,16 +6,16 @@ use winit::{
     keyboard::KeyCode
 };
 use glam::Mat4;
-use crate::{
-    managers::{
-        entity_manager::EntityManager,
-        material_manager::MaterialManager,
-    },
+use crate::{ 
     structures::{
         render_items::RenderItem,
         systems::{
             render_system::RenderSystem,
             camera_system::CameraSystem,
+        },
+        managers::{
+            entity_manager::EntityManager,
+            material_manager::MaterialManager,
         },
     },
     
@@ -57,8 +57,8 @@ impl LogicState {
     pub fn render_prepare(&mut self, window_width: f32, window_height: f32) {
         self.entity_manager.create_test_object(); 
 
-        self.render_system.as_mut().unwrap().run(&mut self.);
-        self.camera_system.as_mut().unwrap().run(&mut self.en);
+       // self.render_system.as_mut().unwrap().run(&mut self.);
+        //self.camera_system.as_mut().unwrap().run(&mut self.en);
     }
    
     pub fn get_render_items(&self) -> &[RenderItem] {
@@ -66,11 +66,12 @@ impl LogicState {
     }
 
     pub fn get_view_project_matrix(&self) -> &Mat4 {
-        self.camera_system.as_ref().unwrap().get_view_project_matrix()
+        //self.camera_system.as_ref().unwrap().get_view_project_matrix()
+        todo!();
     } 
 
     pub fn resize_handle(&mut self, window_width: f32, window_height: f32) {
-        self.camera_system.as_ref().unwrap().window_resize_handle(&mut self.ecs_manager, window_width, window_height);
+        //self.camera_system.as_ref().unwrap().window_resize_handle(&mut self.ecs_manager, window_width, window_height);
     }
 
     pub fn run_real_time_tasks(&mut self) {

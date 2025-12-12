@@ -10,8 +10,8 @@ use crate::{
         render_items::RenderItem,
         render_batch::RenderBatch,
         material::Material,
-    },
-    buffers_layouts::InstanceVertex,
+        buffers_layouts::InstanceVertex,
+    }, 
 };
 
 

@@ -17,7 +17,7 @@ use ktx2::{
 use serde::{Serialize, Deserialize};
 use crate::{
     aliases::InternalTextureID,
-    structures::texture_info::{self, TextureInfo},
+    structures::texture_info::{TextureInfo},
 };
 
 // for parsing JSON meta 

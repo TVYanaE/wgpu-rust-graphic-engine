@@ -18,17 +18,7 @@ use winit::{
     window::Window,
     dpi::PhysicalSize, 
 };
-use crate::{
-    shapes::square::{SQUARE_INDEX, SQUARE_VERTICES},
-    shader_library::ShaderLibrary,
-    managers::{
-        texture_atlas_manager::TextureAtlasManager,
-        sampler_manager::SamplerManager,
-        bind_group_layout_manager::BindGroupLayoutManager,
-        bind_group_manager::BindGroupManager,
-        render_pipeline_manager::RenderPipelineManager,
-        material_manager::MaterialManager,
-    },
+use crate::{ 
     enums::{
         bind_group_layout_name_enum::BindGroupLayoutName,
         bind_group_name_enum::BindGroupName,
@@ -36,9 +26,19 @@ use crate::{
         sampler_name_enum::SamplerName,
     },
     structures::{
+        shader_library::ShaderLibrary, 
         material::Material,
         render_batch::RenderBatch,
         camera::{CameraUniformMatrix, CameraStorage},
+        shapes::square::{SQUARE_INDEX, SQUARE_VERTICES},
+        managers::{
+            texture_atlas_manager::TextureAtlasManager,
+            sampler_manager::SamplerManager,
+            bind_group_layout_manager::BindGroupLayoutManager,
+            bind_group_manager::BindGroupManager,
+            render_pipeline_manager::RenderPipelineManager,
+            material_manager::MaterialManager,
+        },
     },
 };
 

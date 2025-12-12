@@ -14,7 +14,9 @@ use wgpu::{
 };
 use crate::{
     enums::render_pipeline_name_enum::RenderPipelineName,
-    buffers_layouts::{get_vertex_buffer_layout, get_instance_buffer_layout},
+    structures::{
+        buffers_layouts::{get_vertex_buffer_layout, get_instance_buffer_layout},
+    }, 
 };
 
 pub struct RenderPipelineManager {

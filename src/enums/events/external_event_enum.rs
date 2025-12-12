@@ -4,7 +4,7 @@ use winit::{
 };
 
 #[derive(Debug, Clone, Copy)]
-pub enum EngineEvent {
+pub enum ExternalEvent {
     KeyPressed(KeyCode),
     KeyReleased(KeyCode),
     MouseMoved{ dx: f32, dy: f32},
@@ -12,7 +12,7 @@ pub enum EngineEvent {
     MouseBottonReleased(MouseButton),
 }
 
-impl EngineEvent {
+impl ExternalEvent {
     pub fn from_keyboard_event(key_code: KeyCode, key_is_pressed: bool) -> Self {
         if key_is_pressed {
             Self::KeyPressed(key_code)

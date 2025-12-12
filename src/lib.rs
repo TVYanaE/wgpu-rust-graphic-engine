@@ -1,13 +1,8 @@
-mod buffers_layouts;
-mod shapes;
-mod shader_library;
 mod traits;
-mod managers;
 mod enums;
 mod structures;
 mod functions;
 mod aliases;
-mod components;
 mod consts;
 
 use std::{

@@ -6,4 +6,3 @@ pub mod entity_id_manager;
 pub mod render_pipeline_manager;
 pub mod bind_group_manager;
 pub mod entity_manager;
-pub mod component_manager;

@@ -30,5 +30,11 @@ pub enum ChunkError {
 #[derive(Error, Debug)]
 pub enum ArchetypeError {
     #[error("Wrong determination of free chunk. Archetype: {0}")]
-    EntityAddingErrorInChunk(String)
+    EntityAddingErrorInChunk(String),
+
+    #[error("Entity for deleting doesnt exisist in this archetype. Archetype{0}")]
+    EntityWasNotFound(String),
+
+    #[error("Unxpected remove entity error")]
+    RemoveEntityFromChunkError(String)
 }

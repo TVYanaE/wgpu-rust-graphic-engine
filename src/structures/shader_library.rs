@@ -11,7 +11,7 @@ impl ShaderLibrary {
         
         let basic_shader_module_descriptor = ShaderModuleDescriptor {
             label: Some("Basic shader"),
-            source: ShaderSource::Wgsl(include_str!("shaders/basic_shader.wgsl").into()), 
+            source: ShaderSource::Wgsl(include_str!("../shaders/basic_shader.wgsl").into()), 
         };
 
         let basic_shader_module = device.create_shader_module(basic_shader_module_descriptor); 

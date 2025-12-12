@@ -1,15 +1,20 @@
 use crate::{
-    aliases::{EntityID, VacantPlaceInChunk, EntityChunkIndex},
-    components::{
-        size_component::SizeComponent,
-        position_component::PositionComponent,
-        sprite_component::SpriteComponent,
-    },
+    aliases::{EntityID, VacantPlaceInChunk, EntityChunkIndex, FragmentationChunkRate},
+    structures::{
+        components::{
+            size_component::SizeComponent,
+            position_component::PositionComponent,
+            sprite_component::SpriteComponent,
+        },
+    }, 
     consts::OBJECT_ARCHETYPE_CHUNK_SIZE,
-    enums::errors::ChunkError,
+    enums::{
+        errors::ChunkError, 
+    },
 };
 
 pub struct ObjectArchetypeChunk {
+    fragmentation_rate: FragmentationChunkRate,
     entities_map: [EntityID; OBJECT_ARCHETYPE_CHUNK_SIZE],
     positions: [PositionComponent; OBJECT_ARCHETYPE_CHUNK_SIZE],
     sizes: [SizeComponent; OBJECT_ARCHETYPE_CHUNK_SIZE],
@@ -27,7 +32,8 @@ impl ObjectArchetypeChunk {
         let activities = 0;
         let free_places = !0;
 
-        Self { 
+        Self {
+            fragmentation_rate: 0.0,
             entities_map: entites_map,
             positions: positions, 
             sizes: sizes, 
@@ -65,6 +71,10 @@ impl ObjectArchetypeChunk {
     fn is_active_by_index(&self, entity_index: EntityChunkIndex) -> bool {
         let bit_index_delta = self.entity_index_to_bit_index(entity_index);  
         (self.activities & (1u16 << bit_index_delta)) != 0
+    }
+
+    fn count_misses_amount(&self) -> u32 {
+        self.activities.count_zeros() - self.activities.trailing_zeros()
     }
 
     // 0 1 2 3 4 5 6 7 8
@@ -108,7 +118,16 @@ impl ObjectArchetypeChunk {
         self.set_free_place_bit(entity_index, true);
         
         return Ok(self.free_places.count_ones())
+    } 
+
+    pub fn calc_fragmentation(&mut self) {
+        let misses_amount = self.count_misses_amount();
+        self.fragmentation_rate = (OBJECT_ARCHETYPE_CHUNK_SIZE as f32) / (misses_amount as f32);
     }
+
+    pub fn get_fragmentation_rate(&self) -> &FragmentationChunkRate {
+        &self.fragmentation_rate
+    } 
 
     /// Hot method
     pub fn apply_hot_function<F>(&self, function: &F) 

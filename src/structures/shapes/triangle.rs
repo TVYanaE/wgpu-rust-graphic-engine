@@ -1,4 +1,4 @@
-use crate::buffers_layouts::Vertex;
+use crate::structures::buffers_layouts::Vertex;
 
 #[allow(dead_code)]
 pub struct TriangleShape {
