@@ -10,3 +10,4 @@ pub type EntityChunkIndex = usize;
 pub type ChunkArchetypeIndex = usize;
 pub type FragmentationChunkRate = f32;
 pub type OccupancyChunkRate = f32;
+pub type WaveNumber = u32;

@@ -12,3 +12,4 @@ pub mod sampler_name_enum;
 pub mod shader_module_name_enum;
 pub mod material_name_enum;
 pub mod task_enum;
+pub mod task_name_enum;

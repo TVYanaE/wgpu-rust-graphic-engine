@@ -1,24 +1,32 @@
+
 use winit::{
-    keyboard::KeyCode,
-    event::MouseButton,
+    dpi::{PhysicalSize},
+    event::{WindowEvent},
+}; 
+use crate::{
+    enums::{
+        events::{
+            winit_event_enum::WinitEvent,
+        },
+    },
 };
 
 #[derive(Debug, Clone, Copy)]
 pub enum ExternalEvent {
-    KeyPressed(KeyCode),
-    KeyReleased(KeyCode),
-    MouseMoved{ dx: f32, dy: f32},
-    MouseButtonPressed(MouseButton),
-    MouseBottonReleased(MouseButton),
+    ResizedRequest(PhysicalSize<u32>),
+    Unhandling,
 }
 
-impl ExternalEvent {
-    pub fn from_keyboard_event(key_code: KeyCode, key_is_pressed: bool) -> Self {
-        if key_is_pressed {
-            Self::KeyPressed(key_code)
-        }
-        else {
-            Self::KeyReleased(key_code)
+
+impl From<WinitEvent> for ExternalEvent {
+    fn from(value: WinitEvent) -> Self {
+        match value {
+            WinitEvent::WindowEvent(window_event) => {
+                match window_event {
+                    WindowEvent::Resized(physical_size) => { Self::ResizedRequest(physical_size) },
+                    _ => { Self::Unhandling }
+                }
+            }
         }
     }
 }
