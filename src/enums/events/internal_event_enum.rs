@@ -8,4 +8,5 @@ use crate::{
 pub enum InternalEvent {
     RequestRender(EventDescriptor),
     RequestPhysicsCalculation(EventDescriptor),
+    ResizedRequest(EventDescriptor),
 }

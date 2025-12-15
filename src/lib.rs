@@ -34,7 +34,7 @@ impl ApplicationHandler for App {
 
     // This event is triggered after StartCase::Init 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Create window object
+        // Initialization part 
         let window = Arc::new(
             event_loop
                 .create_window(Window::default_attributes())
@@ -45,22 +45,15 @@ impl ApplicationHandler for App {
 
         pollster::block_on(app_state_ref.init_render_state(window.clone())).unwrap();
 
-        app_state_ref.init_systems().unwrap();
+        app_state_ref.init_logic_state().unwrap();
+
         app_state_ref.init_batcher().unwrap();
+
+        // Render prepare part 
 
         let timer = self.timer.as_mut().unwrap();
 
         timer.update();
-
-        // methods for run_fixed, run_variable, prepare and after that request redraw.
-
-        while timer.should_step_fixed() {
-            app_state_ref.run_fixed_time_tasks(&timer).unwrap();
-        }
-
-        app_state_ref.run_real_time_tasks(&timer).unwrap(); 
-
-        app_state_ref.render_prepare().unwrap();
 
         window.request_redraw();
     }
@@ -106,9 +99,6 @@ impl ApplicationHandler for App {
             StartCause::Init => {
                 let mut app_state = AppState::default();
 
-                app_state.init_logic_state().unwrap();
-                app_state.init_event_buffer().unwrap();
-
                 let timer = Timer::new();
                 
                 self.app_state = Some(app_state); 
@@ -118,15 +108,7 @@ impl ApplicationHandler for App {
                 let timer = self.timer.as_mut().unwrap();
                 let app_state_ref = self.app_state.as_mut().unwrap();
 
-                timer.update();
-               
-                while timer.should_step_fixed() {
-                    app_state_ref.run_fixed_time_tasks(&timer).unwrap();
-                }
-
-                app_state_ref.run_real_time_tasks(&timer).unwrap(); 
-
-                app_state_ref.render_prepare().unwrap();
+                timer.update(); 
 
                 app_state_ref.get_window().request_redraw();
 

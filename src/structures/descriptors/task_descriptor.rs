@@ -9,7 +9,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct TaskDescriptor {
     pub task_name: TaskName,
-    pub frame_phase: FramePhaseName,
     pub read_components: Vec<ComponentName>,
     pub write_components: Vec<ComponentName>
 }

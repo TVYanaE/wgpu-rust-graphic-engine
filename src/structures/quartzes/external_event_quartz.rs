@@ -6,44 +6,79 @@ use winit::{
 };
 use crate::{
     structures::{
-        event_buffer_recorder::EventBufferRecorder
+        event_buffer_recorder::EventBufferRecorder,
+        descriptors::{
+            event_descriptor::EventDescriptor,
+        },
+        winit_data_buffer::WinitDataBuffer,
+        winit_event_recorder::WinitEventRecorder,
     },
     enums::{
         events::{
             winit_event_enum::WinitEvent,
-            external_event_enum::ExternalEvent,
+            internal_event_enum::InternalEvent,
         },
+        component_name_enum::ComponentName,
     },
 };
 
 pub struct ExternalEventQuarts {
     event_buffer_recorder: Arc<RwLock<EventBufferRecorder>>,
-    input_buffer_event: Vec<WinitEvent>,
+    winit_event_recorder: Arc<RwLock<WinitEventRecorder>>,
+    winit_data_buffer: Arc<RwLock<WinitDataBuffer>>,
 }
 
 impl ExternalEventQuarts {
-    pub fn new(event_buffer_recorder: Arc<RwLock<EventBufferRecorder>>) -> Self {
+    pub fn new(
+        event_buffer_recorder: Arc<RwLock<EventBufferRecorder>>,
+        winit_event_recorder: Arc<RwLock<WinitEventRecorder>>,
+        winit_data_buffer: Arc<RwLock<WinitDataBuffer>>,
+    ) -> Self {
         Self { 
             event_buffer_recorder: event_buffer_recorder,
-            input_buffer_event: Vec::new() 
+            winit_event_recorder: winit_event_recorder,
+            winit_data_buffer: winit_data_buffer,
         }
-    }
-    pub fn register_winit_window_event(&mut self, window_event: WindowEvent) {
-        self.input_buffer_event.push(WinitEvent::from(window_event)); 
-    }
-    pub fn run(&mut self) {
-        let mut external_event_buffer = Vec::new();
+    } 
+    pub fn run_tact(&mut self) {
+        let mut winit_event_buffer = Vec::new();
 
-        for winit_event in self.input_buffer_event.drain(..) {
-            let external_event = ExternalEvent::from(winit_event);
+        let mut winit_event_guard = self.winit_event_recorder.write().unwrap();
 
-            external_event_buffer.push(external_event);
+        for winit_event in winit_event_guard.drain_winit_event_buffer() {
+            winit_event_buffer.push(winit_event);
+        }
+         
+        drop(winit_event_guard);
+
+        let mut winit_data_buffer_guard = self.winit_data_buffer.write().unwrap();
+        let mut internal_event_buffer = Vec::new();
+
+        for winit_event in winit_event_buffer {
+            match winit_event {
+                WinitEvent::WindowEvent(window_event) => {
+                    match window_event {
+                        WindowEvent::Resized(physical_size) => { 
+                            winit_data_buffer_guard.set_physical(physical_size);
+                            let internal_event_descriptor = EventDescriptor {
+                                read_components: Vec::new(),
+                                write_components: vec![ComponentName::Camera],
+                            };
+
+                            internal_event_buffer.push(InternalEvent::ResizedRequest(internal_event_descriptor));
+                        },
+                        _ => {},
+                    }
+                }
+            }
         }
 
-        let mut guard = self.event_buffer_recorder.write().unwrap();
+        drop(winit_data_buffer_guard);
 
-        for external_event in external_event_buffer {
-            guard.register_external_event(external_event);
+        let mut event_recorder_guard = self.event_buffer_recorder.write().unwrap();
+
+        for internal_event in internal_event_buffer {
+            event_recorder_guard.register_internal_event(internal_event);
         }
     }
 }

@@ -129,49 +129,35 @@ impl ObjectArchetypeChunk {
         &self.fragmentation_rate
     } 
 
-    /// Hot method
-    pub fn apply_hot_function<F>(&self, function: &F) 
-    where 
-        F: Fn(
-            &PositionComponent,
-            &SizeComponent,
-            &SpriteComponent,
-            EntityID
-        )
-    {
-        for entity_index in 0..OBJECT_ARCHETYPE_CHUNK_SIZE {
-            if self.is_active_by_index(entity_index) {
-                function(
-                    &self.positions[entity_index], 
-                    &self.sizes[entity_index], 
-                    &self.sprites[entity_index],
-                    self.entities_map[entity_index]
-                );
-            }
-        }
+    pub fn get_position_component_ref(&self) -> impl Iterator<Item = &PositionComponent> {
+        let position_ptr = self.positions.as_ptr();
+
+        (0..OBJECT_ARCHETYPE_CHUNK_SIZE)
+            .filter(|entity_index|{
+                self.is_active_by_index(*entity_index as EntityChunkIndex)
+            })
+            .map(move |entity_index|{
+                unsafe {
+                    & *position_ptr.add(entity_index)
+                }
+            })
         
     }
 
-    /// Hot method 
-    pub fn apply_hot_mut_function<F>(&mut self, function: &mut F) 
-    where 
-        F: FnMut(
-            &mut PositionComponent,
-            &mut SizeComponent,
-            &mut SpriteComponent,
-            EntityID
-        )
-    {
-        for entity_index in 0..OBJECT_ARCHETYPE_CHUNK_SIZE {
-            if self.is_active_by_index(entity_index) {
-                function(
-                    &mut self.positions[entity_index], 
-                    &mut self.sizes[entity_index], 
-                    &mut self.sprites[entity_index],
-                    self.entities_map[entity_index],
-                );
-            }
-        }
-        
+    pub fn get_position_component_mut_ref(&mut self) -> impl Iterator<Item = &mut PositionComponent> {
+        let position_ptr = self.positions.as_mut_ptr();
+
+        (0..OBJECT_ARCHETYPE_CHUNK_SIZE)
+            .filter(|entity_index|{
+                self.is_active_by_index(*entity_index as EntityChunkIndex)
+            })
+            .map(move |entity_index|{
+                unsafe {
+                    &mut *position_ptr.add(entity_index)
+                }
+            })
     }
+
+    
+ 
 }

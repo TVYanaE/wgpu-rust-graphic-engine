@@ -7,7 +7,6 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct EventDescriptor {
-    pub frame_phase: FramePhaseName,
     pub read_components: Vec<ComponentName>,
     pub write_components: Vec<ComponentName>
 }

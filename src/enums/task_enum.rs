@@ -16,13 +16,25 @@ use crate::{
 pub enum Task {
     RenderFrame(TaskDescriptor),
     PhysicsCalculation(TaskDescriptor),
+    CameraReconfigurate(TaskDescriptor),
+    Unknown,
 }
 
 impl Task {
-    pub fn get_task_name(&self) -> TaskName {
+    pub fn get_task_name(&self) -> Option<TaskName> {
         match self {
-            Task::RenderFrame(task_descrptor) => { task_descrptor.task_name },
-            Task::PhysicsCalculation(task_descriptor) => { task_descriptor.task_name }
+            Task::RenderFrame(task_descrptor) => { Some(task_descrptor.task_name) },
+            Task::PhysicsCalculation(task_descriptor) => { Some(task_descriptor.task_name) },
+            Task::CameraReconfigurate(task_descriptor) => { Some(task_descriptor.task_name) }
+            Task::Unknown => {None}
+        }
+    }
+    pub fn get_task_descriptor(&self) -> Option<&TaskDescriptor> {
+        match self {
+            Task::RenderFrame(task_descriptor) => { Some(task_descriptor) },
+            Task::PhysicsCalculation(task_descriptor) => { Some(task_descriptor) },
+            Task::CameraReconfigurate(task_decriptor) => { Some(task_decriptor) },
+            Task::Unknown => { None },
         }
     }
 }
@@ -33,7 +45,6 @@ impl From<InternalEvent> for Task {
             InternalEvent::RequestRender(event_descriptor) => {
                 let task_descriptor = TaskDescriptor {
                     task_name: TaskName::RenderFrame,
-                    frame_phase: event_descriptor.frame_phase,
                     read_components: event_descriptor.read_components,
                     write_components: event_descriptor.write_components,
                 };
@@ -44,13 +55,22 @@ impl From<InternalEvent> for Task {
             InternalEvent::RequestPhysicsCalculation(event_descriptor) => {
                 let task_descriptor = TaskDescriptor {
                     task_name: TaskName::PhysicsCalculation,
-                    frame_phase: event_descriptor.frame_phase,
                     read_components: event_descriptor.read_components,
                     write_components: event_descriptor.write_components,
                 }; 
 
                 Self::PhysicsCalculation(task_descriptor)
             },
+
+            InternalEvent::ResizedRequest(event_descriptor) => {
+                let task_descriptor = TaskDescriptor {
+                    task_name: TaskName::CameraReconfigurate,
+                    read_components: event_descriptor.read_components,
+                    write_components: event_descriptor.write_components,
+                };
+
+                Self::CameraReconfigurate(task_descriptor) 
+            }
         }
     }
 }

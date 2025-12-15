@@ -2,4 +2,5 @@
 pub enum TaskName {
     RenderFrame,
     PhysicsCalculation,
+    CameraReconfigurate,
 }

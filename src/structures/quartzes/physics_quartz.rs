@@ -1,9 +1,6 @@
-use std::{
-    sync::{Arc, RwLock}
-};
 use crate::{
-    structures::{
-        event_buffer_recorder::EventBufferRecorder,
+    structures::{ 
+        descriptors::event_descriptor::EventDescriptor,
     },
     enums::{
         events::internal_event_enum::InternalEvent
@@ -11,17 +8,19 @@ use crate::{
 };
 
 pub struct PhysicsQuartz {
-    event_buffer_recorder: Arc<RwLock<EventBufferRecorder>>
 }
 
 impl PhysicsQuartz {
-    pub fn new(event_buffer_recorder: Arc<RwLock<EventBufferRecorder>>) -> Self {
-        Self { event_buffer_recorder: event_buffer_recorder }
+    pub fn new() -> Self {
+        Self { }
     }
 
-    pub fn run(&mut self) {
-        let mut guard = self.event_buffer_recorder.write().unwrap();
+    pub fn run_tact(&mut self) -> InternalEvent {
+        let event_descriptor = EventDescriptor {
+            write_components: Vec::new(),
+            read_components: Vec::new(),
+        };
 
-        guard.register_internal_event(InternalEvent::RequestPhysicsCalculation);
+        InternalEvent::RequestPhysicsCalculation(event_descriptor)
     }
 }

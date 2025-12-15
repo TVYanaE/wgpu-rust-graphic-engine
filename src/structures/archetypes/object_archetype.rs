@@ -191,32 +191,5 @@ impl ObjectArchetype {
         })
     }
 
-    pub fn apply_hot_function<F>(&self, function: &F) 
-        where 
-            F: Fn(
-                &PositionComponent,
-                &SizeComponent,
-                &SpriteComponent,
-                EntityID
-            )
-        {
-            for chunk in self.object_chunks.iter() {
-                chunk.apply_hot_function(function);
-            } 
-        }
-
-        /// Hot method 
-        pub fn apply_hot_mut_function<F>(&mut self, function: &mut F) 
-        where 
-            F: FnMut(
-                &mut PositionComponent,
-                &mut SizeComponent,
-                &mut SpriteComponent,
-                EntityID
-            )
-        {
-            for chunk in self.object_chunks.iter_mut() {
-                chunk.apply_hot_mut_function(function);
-            } 
-        }
+    
 }
