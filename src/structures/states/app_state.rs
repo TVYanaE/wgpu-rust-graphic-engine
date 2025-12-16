@@ -6,6 +6,9 @@ use winit::{
     dpi::PhysicalSize,
     keyboard::{KeyCode},
 };
+use shipyard::{
+    UniqueView
+};
 use crate::{
     structures::{
         states::{
@@ -30,7 +33,13 @@ pub struct AppState {
 
 impl AppState {
     pub fn init_logic_state(&mut self) -> Result<(), EngineError> {
-        let logic_state = LogicState::new(self.render_state.as_ref().unwrap().material_manager.clone());
+        let render_state_ref = self.render_state.as_ref().unwrap();
+
+        let logic_state = LogicState::new(
+            render_state_ref.material_manager.clone(), 
+            render_state_ref.surface_configuration.width as f32, 
+            render_state_ref.surface_configuration.height as f32
+        );
 
         self.logic_state = Some(logic_state);
 
@@ -64,8 +73,18 @@ impl AppState {
     }
 
     pub fn redraw_handle(&mut self) {
+        let render_state_ref = self.render_state.as_mut().unwrap();
+        let logic_state_ref = self.logic_state.as_ref().unwrap();
+
+        let matrix = logic_state_ref.world.borrow::<UniqueView<CameraUniformMatrix>>().unwrap();
+
+        render_state_ref.queue.write_buffer(
+            &render_state_ref.camera_storage.camera_uniform_buffer, 
+            0, 
+            bytemuck::bytes_of(&matrix.view_projection_matrix));
+
         let render_batches = self.batcher.as_mut().unwrap().get_render_batches(); 
 
-        self.render_state.as_mut().unwrap().draw_call(render_batches);
+        render_state_ref.draw_call(render_batches);
     }
 }

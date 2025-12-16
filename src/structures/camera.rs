@@ -2,15 +2,18 @@ use glam::{
     Mat4,
     Vec3,
 };
+use shipyard::{
+    Unique
+};
 use wgpu::{
     BindGroup,
     Buffer,
 };
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Unique, Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniformMatrix {
-    view_projection_matrix: [[f32;4]; 4],
+    pub view_projection_matrix: [[f32;4]; 4],
 }
 
 impl CameraUniformMatrix {
@@ -22,20 +25,34 @@ impl CameraUniformMatrix {
     }
 }
 
+#[derive(Unique, Debug, Clone, Copy)]
+pub struct Camera {
+    pub camera_position: Vec3,
+    pub view_target: Vec3,
+    pub up: Vec3,
+    pub bottom_bound: f32,
+    pub top_bound: f32,
+    pub far: f32,
+    pub near: f32,
+    pub aspect: f32,
+}
+
 pub struct CameraStorage {
     pub camera_bind_group: BindGroup,
     pub camera_uniform_buffer: Buffer,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Camera {
-    pub camera_position: Vec3,
-    pub view_target: Vec3,
-    pub up: Vec3,
-    pub left_bound: f32,
-    pub right_bound: f32,
-    pub bottom_bound: f32,
-    pub top_bound: f32,
-    pub far: f32,
-    pub near: f32,
+impl Camera {
+    pub fn new(width: f32, height: f32) -> Self {
+        Camera { 
+            camera_position: Vec3 { x: 0.0, y: 0.0, z: 2.0 },
+            view_target: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+            up: Vec3 { x: 0.0, y: 1.0, z: 0.0 },
+            bottom_bound: -1.0,
+            top_bound: 1.0,
+            far: 10.0,
+            near: 0.0,
+            aspect: width / height,
+        }
+    } 
 }

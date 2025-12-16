@@ -23,7 +23,9 @@ use crate::{
         },
         systems::{
             render_system::{prepare_render_items, prepare_logical_render_batches},
+            camera_system::calc_view_project_matrix,
         },
+        camera::{Camera, CameraUniformMatrix},
     },
 };
 
@@ -32,16 +34,20 @@ pub struct LogicState {
 }
 
 impl LogicState {
-    pub fn new(material_manager: Arc<MaterialManager>) -> Self {
+    pub fn new(material_manager: Arc<MaterialManager>, width: f32, height: f32) -> Self {
         let mut world = World::default();
 
         let logical_render_batches_cache = LogicalRenderBatchesCache::new();
         let render_item_cache = RenderItemCache::new();
         let material_manager_ref = MaterialManagerRef::new(material_manager);
+        let camera = Camera::new(width, height);
+        let camera_uniform_matrix = CameraUniformMatrix::new();
 
         world.add_unique(material_manager_ref);
         world.add_unique(render_item_cache);
         world.add_unique(logical_render_batches_cache);
+        world.add_unique(camera);
+        world.add_unique(camera_uniform_matrix);
 
         let _entity = world.add_entity((PositionComponent::default(), SizeComponent::default(), SpriteComponent::default()));
 
@@ -53,7 +59,7 @@ impl LogicState {
     }
 
     fn workload() -> Workload {
-        (prepare_render_items, prepare_logical_render_batches).into_workload()
+        (prepare_render_items, prepare_logical_render_batches, calc_view_project_matrix).into_workload()
     }
 
     pub fn run_tact(&mut self) { 
