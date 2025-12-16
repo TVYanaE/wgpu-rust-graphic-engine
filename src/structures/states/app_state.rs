@@ -54,7 +54,18 @@ impl AppState {
         return Ok(());
     }  
 
+    pub fn test_run(&mut self) {
+        self.logic_state.as_mut().unwrap().run_tact();
+        self.batcher.as_mut().unwrap().batching(&self.logic_state.as_ref().unwrap().world, &self.render_state.as_ref().unwrap().device);
+    }
+
     pub fn get_window(&self) -> Arc<Window> {
         self.render_state.as_ref().unwrap().window.clone()
+    }
+
+    pub fn redraw_handle(&mut self) {
+        let render_batches = self.batcher.as_mut().unwrap().get_render_batches(); 
+
+        self.render_state.as_mut().unwrap().draw_call(render_batches);
     }
 }

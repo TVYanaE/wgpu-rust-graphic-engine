@@ -1,5 +1,5 @@
 use std::{
-    path::PathBuf, rc::Rc, sync::Arc
+    path::PathBuf, sync::Arc
 };
 use wgpu::{
     Instance, InstanceDescriptor, 
@@ -58,7 +58,7 @@ pub struct RenderState {
     pub sampler_manager: SamplerManager,
     pub bind_group_layout_manager: BindGroupLayoutManager,
     pub bind_group_manager: BindGroupManager,
-    pub material_manager: Rc<MaterialManager>,
+    pub material_manager: Arc<MaterialManager>,
     pub render_pipeline_manager: RenderPipelineManager,
     pub square_vertex_buffer: Buffer,
     pub square_index_buffer: Buffer,
@@ -239,8 +239,8 @@ impl RenderState {
             render_pipeline: render_pipeline_manager.get_render_pipeline(RenderPipelineName::DefaultRenderPipeline).unwrap(),
         };
 
-        material_manager.add_material(0, Rc::new(ant_material));
-        material_manager.add_material(1, Rc::new(pig_material));
+        material_manager.add_material(0, Arc::new(ant_material));
+        material_manager.add_material(1, Arc::new(pig_material));
 
         let render_state = Self {
             device: device,
@@ -258,7 +258,7 @@ impl RenderState {
             bind_group_manager: bind_group_manager,
             texture_atlas_manager: texture_atlas_manager,
             render_pipeline_manager: render_pipeline_manager,
-            material_manager: Rc::new(material_manager),
+            material_manager: Arc::new(material_manager),
             square_vertex_buffer: square_vertex_buffer,
             square_index_buffer: square_index_buffer,
             index_format: IndexFormat::Uint16,

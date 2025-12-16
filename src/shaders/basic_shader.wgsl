@@ -12,13 +12,13 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
 };
 
-struct CameraUniform {
+/*struct CameraUniform {
     view_project: mat4x4<f32>
-};
+};*/
 
 // Camera located in group 1 (settings up in set_binding_groups) 
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform; 
+//@group(0) @binding(0)
+//var<uniform> camera: CameraUniform; 
 
 // Vertex Shader
 
@@ -30,8 +30,8 @@ fn vs_main(
 	out.tex_coords = input.tex_coords * input.uv_scale + input.uv_offset;
 
     let world_position = input.instance_position + input.position * input.instance_size;
-	
-    out.clip_position = camera.view_project * vec4<f32>(world_position, 1.0);
+	// camera.view_project
+    out.clip_position = vec4<f32>(world_position, 1.0);
 	return out;
 }
 

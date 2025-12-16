@@ -1,16 +1,15 @@
+use shipyard::{Component};
 use crate::{
     aliases::MaterialID,
 };
 
-#[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub struct SpriteComponent { 
     pub material_id: MaterialID,
 }
 
-
 impl Default for SpriteComponent {
     fn default() -> Self {
-        Self { material_id: 0 }
+        Self { material_id: 1 }
     }
 }

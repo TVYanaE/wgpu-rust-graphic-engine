@@ -1,5 +1,5 @@
 use std::{
-    rc::Rc,
+    sync::Arc,
 };
 use crate::{
     structures::material::Material,
@@ -9,7 +9,7 @@ use crate::{
 pub struct RenderItem {
     pub instance_position: [f32; 3],
     pub instance_size: [f32; 3],
-    pub material: Rc<Material>,
+    pub material: Arc<Material>,
 }
 
 

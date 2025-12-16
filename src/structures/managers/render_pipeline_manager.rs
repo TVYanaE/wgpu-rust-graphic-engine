@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
-    rc::Rc,
     cell::RefCell,
+    sync::Arc,
 };
 use wgpu::{
     RenderPipeline, RenderPipelineDescriptor, PipelineLayoutDescriptor, PipelineCompilationOptions,
@@ -20,12 +20,12 @@ use crate::{
 };
 
 pub struct RenderPipelineManager {
-    render_pipeline_storage: RefCell<HashMap<RenderPipelineName, Rc<RenderPipeline>>>
+    render_pipeline_storage: RefCell<HashMap<RenderPipelineName, Arc<RenderPipeline>>>
 }
 
 impl RenderPipelineManager {
     pub fn new() -> Self {
-        let render_pipeline_storage: RefCell<HashMap<RenderPipelineName, Rc<RenderPipeline>>> = RefCell::new(HashMap::new());  
+        let render_pipeline_storage: RefCell<HashMap<RenderPipelineName, Arc<RenderPipeline>>> = RefCell::new(HashMap::new());  
 
         Self { render_pipeline_storage:  render_pipeline_storage}
     }
@@ -82,12 +82,12 @@ impl RenderPipelineManager {
             cache: None,
         };
 
-        let render_pipeline = Rc::new(device.create_render_pipeline(&render_pipeline_description));
+        let render_pipeline = Arc::new(device.create_render_pipeline(&render_pipeline_description));
         
         self.render_pipeline_storage.borrow_mut().insert(render_pipeline_name, render_pipeline.clone());
     }
     
-    pub fn get_render_pipeline(&self, render_pipeline_name: RenderPipelineName) -> Option<Rc<RenderPipeline>> {
+    pub fn get_render_pipeline(&self, render_pipeline_name: RenderPipelineName) -> Option<Arc<RenderPipeline>> {
         self.render_pipeline_storage.borrow().get(&render_pipeline_name).cloned()
     }
 }

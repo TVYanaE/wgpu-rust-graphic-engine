@@ -1,7 +1,7 @@
 use std::{
-    rc::Rc,
     cell::RefCell,
     collections::HashMap,
+    sync::Arc,
 };
 use wgpu::{
     Device,
@@ -14,7 +14,7 @@ use crate::{
 
 
 pub struct BindGroupManager {
-    bind_group_storage: RefCell<HashMap<BindGroupName, Rc<BindGroup>>>
+    bind_group_storage: RefCell<HashMap<BindGroupName, Arc<BindGroup>>>
 }
 
 impl BindGroupManager {
@@ -48,10 +48,10 @@ impl BindGroupManager {
             }
         );
 
-        self.bind_group_storage.borrow_mut().insert(bind_group_name, Rc::new(bind_group));
+        self.bind_group_storage.borrow_mut().insert(bind_group_name, Arc::new(bind_group));
     }
 
-    pub fn get_bind_group(&self, bind_group_name: BindGroupName) -> Option<Rc<BindGroup>> {
+    pub fn get_bind_group(&self, bind_group_name: BindGroupName) -> Option<Arc<BindGroup>> {
         self.bind_group_storage.borrow().get(&bind_group_name).cloned()
     }
 }

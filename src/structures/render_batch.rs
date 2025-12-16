@@ -1,5 +1,5 @@
 use std::{
-    rc::Rc,
+    sync::Arc,
 };
 use wgpu::{
     BindGroup, RenderPipeline, Buffer
@@ -7,8 +7,8 @@ use wgpu::{
 
 #[derive(Debug, Clone)]
 pub struct RenderBatch {
-    pub render_pipeline: Rc<RenderPipeline>,
-    pub bind_group: Rc<BindGroup>,
+    pub render_pipeline: Arc<RenderPipeline>,
+    pub bind_group: Arc<BindGroup>,
     pub instance_buffer: Buffer,
     pub instance_count: u32,
 }

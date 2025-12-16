@@ -1,72 +1,63 @@
 use std::{
-    sync::{Arc, RwLock},
-    rc::Rc,
+    sync::{Arc},
+};
+use shipyard::{
+    World,
+    IntoWorkload,
+    Workload,
 };
 use crate::{
     structures::{
-        scheduler::Scheduler,
-        event_buffer_recorder::EventBufferRecorder,
-        orchestrators::{
-            global_orchestrator::GlobalOrchestrator,
-            archetype_orchestrator::ArcherypeOrchestrator,
-            system_orchestrator::SystemOrchestrator,
-        },
         managers::{
             material_manager::MaterialManager
         },
-        quartzes::global_quartz::GlobalQuartz,
-        winit_event_recorder::WinitEventRecorder,
-        winit_data_buffer::WinitDataBuffer,
+        uniques::{
+            material_manager_ref::MaterialManagerRef,
+            render_item_cache::RenderItemCache,
+            logical_render_batches_cache::LogicalRenderBatchesCache,
+        },
+        components::{
+            position_component::PositionComponent,
+            size_component::SizeComponent,
+            sprite_component::SpriteComponent,
+        },
+        systems::{
+            render_system::{prepare_render_items, prepare_logical_render_batches},
+        },
     },
 };
 
 pub struct LogicState {
-    event_buffer_recorder: Arc<RwLock<EventBufferRecorder>>,
-    scheduler: Arc<RwLock<Scheduler>>,
-    global_quartz: GlobalQuartz,
-    winit_event_recorder: Arc<RwLock<WinitEventRecorder>>,
-    winit_data_buffer: Arc<RwLock<WinitDataBuffer>>,
-    archetype_orchestrator: Arc<RwLock<ArcherypeOrchestrator>>,
-    system_orchestrator: Arc<RwLock<SystemOrchestrator>>,
-    global_orchestrator: GlobalOrchestrator,
+    pub world: World,
 }
 
 impl LogicState {
-    pub fn new(material_manager: Rc<MaterialManager>) -> Self {
-        let event_buffer_recorder = Arc::new(RwLock::new(EventBufferRecorder::new()));
-        let scheduler = Arc::new(RwLock::new(Scheduler::new(event_buffer_recorder.clone())));
-       
-        let winit_event_recorder = Arc::new(RwLock::new(WinitEventRecorder::new()));
-        let winit_data_buffer = Arc::new(RwLock::new(WinitDataBuffer::new()));
+    pub fn new(material_manager: Arc<MaterialManager>) -> Self {
+        let mut world = World::default();
 
-        let global_quartz = GlobalQuartz::new(
-            event_buffer_recorder.clone(), 
-            winit_event_recorder.clone(), 
-            winit_data_buffer.clone(),
-        );
-        
-        let archetype_orchestrator = Arc::new(RwLock::new(ArcherypeOrchestrator::new()));
-        let systen_orchestrator = Arc::new(RwLock::new(SystemOrchestrator::new(material_manager)));
-        let global_orchestrator = GlobalOrchestrator::new(
-            scheduler.clone(),
-            systen_orchestrator.clone(),
-            archetype_orchestrator.clone(),
-        );
+        let logical_render_batches_cache = LogicalRenderBatchesCache::new();
+        let render_item_cache = RenderItemCache::new();
+        let material_manager_ref = MaterialManagerRef::new(material_manager);
 
-        Self {
-            event_buffer_recorder: event_buffer_recorder,
-            scheduler: scheduler,
-            winit_data_buffer: winit_data_buffer,
-            winit_event_recorder: winit_event_recorder,
-            global_quartz: global_quartz,
-            archetype_orchestrator: archetype_orchestrator,
-            system_orchestrator: systen_orchestrator,
-            global_orchestrator: global_orchestrator,
+        world.add_unique(material_manager_ref);
+        world.add_unique(render_item_cache);
+        world.add_unique(logical_render_batches_cache);
+
+        let _entity = world.add_entity((PositionComponent::default(), SizeComponent::default(), SpriteComponent::default()));
+
+        world.add_workload(Self::workload);
+
+        Self { 
+            world, 
         }
     }
 
-    pub fn run_tact(&mut self) {
-         
+    fn workload() -> Workload {
+        (prepare_render_items, prepare_logical_render_batches).into_workload()
+    }
+
+    pub fn run_tact(&mut self) { 
+        self.world.run_workload(Self::workload).unwrap();
     }
 }
 

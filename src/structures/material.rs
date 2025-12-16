@@ -1,5 +1,5 @@
 use std::{
-    rc::Rc,
+    sync::Arc,
 };
 use wgpu::{
     BindGroup, RenderPipeline
@@ -7,8 +7,8 @@ use wgpu::{
 
 #[derive(Debug, Clone)]
 pub struct Material {
-    pub bind_group: Rc<BindGroup>,
-    pub render_pipeline: Rc<RenderPipeline>,
+    pub bind_group: Arc<BindGroup>,
+    pub render_pipeline: Arc<RenderPipeline>,
     pub uv_offset: [f32; 2],
     pub uv_scale: [f32; 2],
 }

@@ -55,6 +55,8 @@ impl ApplicationHandler for App {
 
         timer.update();
 
+        self.app_state.as_mut().unwrap().test_run();
+
         window.request_redraw();
     }
 
@@ -73,12 +75,12 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
-                self.app_state.as_mut().unwrap().redraw_handle().unwrap();
+                self.app_state.as_mut().unwrap().redraw_handle();
             }
             WindowEvent::Resized(physical_size) => {
                 // Reconfigures the size of the surface. We do not re-render
                 // here as this event is always followed up by redraw request.
-                self.app_state.as_mut().unwrap().resize_handle(physical_size).unwrap();
+                //self.app_state.as_mut().unwrap().resize_handle(physical_size).unwrap();
             },
             WindowEvent::KeyboardInput {  
                 event: KeyEvent {
@@ -88,7 +90,7 @@ impl ApplicationHandler for App {
                 },
                 ..
             } => {
-                self.app_state.as_mut().unwrap().keyboard_input_handle(key_code, key_state.is_pressed()).unwrap();
+                //self.app_state.as_mut().unwrap().keyboard_input_handle(key_code, key_state.is_pressed()).unwrap();
             }
             _ => (),
         }
@@ -97,7 +99,7 @@ impl ApplicationHandler for App {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         match cause {
             StartCause::Init => {
-                let mut app_state = AppState::default();
+                let app_state = AppState::default();
 
                 let timer = Timer::new();
                 
@@ -111,7 +113,7 @@ impl ApplicationHandler for App {
                 timer.update(); 
 
                 app_state_ref.get_window().request_redraw();
-
+                self.app_state.as_mut().unwrap().test_run();
             },
             // There are two another type of StartCause for another type of ControlFlow
             _ => {},    

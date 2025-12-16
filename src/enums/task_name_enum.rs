@@ -1,6 +1,0 @@
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum TaskName {
-    RenderFrame,
-    PhysicsCalculation,
-    CameraReconfigurate,
-}
