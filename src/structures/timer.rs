@@ -1,20 +1,28 @@
 use std::time::{Instant, Duration};
+use flume::{Sender};
+use crate::{
+    enums::{
+        input_event_enum::InputEvent,
+    },
+};
 
 pub struct Timer {
     last_instant: Instant,
     delta: Duration,
     fixed_step: Duration,
     accumulator: Duration,
+    input_event_channel_sender: Sender<InputEvent>,
 }
 
 
 impl Timer {
-    pub fn new() -> Self {
+    pub fn new(input_event_channel_sender: Sender<InputEvent>) -> Self {
         Self { 
             last_instant: Instant::now(), 
             delta: Duration::ZERO, 
-            fixed_step: Duration::from_millis(16), 
+            fixed_step: Duration::from_millis(17), 
             accumulator: Duration::ZERO, 
+            input_event_channel_sender: input_event_channel_sender
         }
     }
 
@@ -26,17 +34,13 @@ impl Timer {
         self.accumulator += self.delta;
     }
         
-    pub fn should_step_fixed(&mut self) -> bool {
+    pub fn check_step_fixed(&mut self) {
         if self.accumulator >= self.fixed_step {
             self.accumulator -= self.fixed_step;
-            return true;
+            self.input_event_channel_sender.send(InputEvent::FrameStart);
         }
         else {
-            return false;
+            return;
         }
-    }
-
-    pub fn dt(&self) -> f32 {
-        self.delta.as_secs_f32()
-    }
+    } 
 }

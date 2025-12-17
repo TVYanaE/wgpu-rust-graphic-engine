@@ -1,10 +1,8 @@
 use std::{
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 use winit::{
     window::Window,
-    dpi::PhysicalSize,
-    keyboard::{KeyCode},
 };
 use shipyard::{
     UniqueView
@@ -15,12 +13,14 @@ use crate::{
             logic_state::LogicState,
             render_state::RenderState,
         },
-        timer::Timer,
         batcher::Batcher,
         camera::CameraUniformMatrix,
+        event_recorder::EventRecorder,
+        scheduler::Scheduler,
     },
     enums::{
         errors::EngineError,
+        external_event_enum::ExternalEvent,
     },
 };
 
@@ -29,6 +29,8 @@ pub struct AppState {
     logic_state: Option<LogicState>,
     render_state: Option<RenderState>,
     batcher: Option<Batcher>,
+    event_recorder: Option<EventRecorder>,
+    scheduler: Option<Scheduler>,
 }
 
 impl AppState {
@@ -46,13 +48,7 @@ impl AppState {
         return Ok(());
     }
 
-    pub async fn init_render_state(&mut self, window: Arc<Window> ) -> Result<(), EngineError> {
-        let render_state = RenderState::new(window).await;
-
-        self.render_state = Some(render_state);
-
-        return Ok(());
-    }
+    
 
     pub fn init_batcher(&mut self) -> Result<(), EngineError> {
 
@@ -63,9 +59,35 @@ impl AppState {
         return Ok(());
     }  
 
-    pub fn test_run(&mut self) {
+    pub fn init_event_recorder(&mut self) -> Result<(), EngineError> {
+        let event_recorder = EventRecorder::new();
+
+        self.event_recorder = Some(event_recorder);
+
+        return Ok(());
+    }
+
+    pub fn init_scheduler(&mut self) -> Result<(), EngineError> {
+        let scheduler = Scheduler::new(); 
+
+        self.scheduler = Some(scheduler);
+
+        return Ok(());
+    }
+
+    pub fn external_event_handling(&mut self, window_event: impl Into<ExternalEvent>) -> Result<(), EngineError> {
+        self.event_recorder.as_mut().unwrap().collect_external_event(window_event);
+
+        return Ok(());
+    }
+
+    pub fn run_tact(&mut self) {
+        let external_event_buffer = self.event_recorder.as_mut().unwrap().drain_external_event_buffer();
+        self.scheduler.as_ref().unwrap().run_tact(external_event_buffer);
+
         self.logic_state.as_mut().unwrap().run_tact();
         self.batcher.as_mut().unwrap().batching(&self.logic_state.as_ref().unwrap().world, &self.render_state.as_ref().unwrap().device);
+        self.get_window().request_redraw();
     }
 
     pub fn get_window(&self) -> Arc<Window> {

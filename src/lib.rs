@@ -6,58 +6,92 @@ mod aliases;
 mod consts;
 
 use std::{
-    sync::Arc,
+    sync::{Arc},
 };
+use flume::{unbounded, Sender,};
 use winit::{
     application::ApplicationHandler,
-    event::{WindowEvent, KeyEvent, StartCause, },
+    event::{WindowEvent, StartCause, },
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::{Window, WindowId},
-    keyboard::{PhysicalKey},
 };
 use crate::{
     structures::{
         states::{
             app_state::AppState,
+            shared_thread_state::SharedThreadState,
         },
-        timer::Timer,
+        timer::Timer, 
+        thread_buffer_recorders::{
+            input_event_thread_buffer_recorder::InputEventThreadBufferRecorder,
+        },
+        threads::{
+            render_thread::RenderThread,
+            control_thread::ControlThread,
+        },
+    },
+    enums::{
+        input_event_enum::InputEvent, 
     },
 };
 
 #[derive(Default)]
 struct App {
-    app_state: Option<AppState>, 
+    app_state: Option<AppState>,
+    // Threads 
+    render_thread: Option<RenderThread>,
+    control_thread: Option<ControlThread>,
+
+    // Shared Thread State 
+    shared_thread_state: Option<Arc<SharedThreadState>>,
+    //
     timer: Option<Timer>,
+    input_event_thread_buffer_recorder: Option<InputEventThreadBufferRecorder>,
+    input_event_channel_sender: Option<Sender<InputEvent>>,
 }
 
 impl ApplicationHandler for App {
 
     // This event is triggered after StartCase::Init 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Initialization part 
+        // Get the window from winit
         let window = Arc::new(
             event_loop
                 .create_window(Window::default_attributes())
                 .unwrap(),
-        );
+            );   
 
-        let app_state_ref = self.app_state.as_mut().unwrap();
+        // Init channels 
+        let (input_event_channel_sender, input_event_channel_receiver) = unbounded::<InputEvent>();
 
-        pollster::block_on(app_state_ref.init_render_state(window.clone())).unwrap();
+        // Init exchange thread buffers
 
-        app_state_ref.init_logic_state().unwrap();
+        // Init exchande thread buffers recorders
+        let input_event_thread_buffer_recorder = 
+            InputEventThreadBufferRecorder::new(input_event_channel_sender.clone());
 
-        app_state_ref.init_batcher().unwrap();
+        // Init Timer 
+        let timer = Timer::new(input_event_channel_sender.clone()); 
 
-        // Render prepare part 
+        // Init threads
+        let render_thead = pollster::block_on(RenderThread::new(window));
+        let control_thread = ControlThread::start_thread(input_event_channel_receiver);
 
-        let timer = self.timer.as_mut().unwrap();
+        // Init Shader Thread state 
+        let shared_thread_state = SharedThreadState::new(render_thead.get_material_manager());
 
-        timer.update();
+        // Save into App
+        self.render_thread = Some(render_thead);
+        self.control_thread = Some(control_thread);
 
-        self.app_state.as_mut().unwrap().test_run();
+        self.shared_thread_state = Some(Arc::new(shared_thread_state));
 
-        window.request_redraw();
+        self.input_event_thread_buffer_recorder = Some(input_event_thread_buffer_recorder);
+
+        self.input_event_channel_sender = Some(input_event_channel_sender);
+        self.timer = Some(timer);  
+        
+        
     }
 
     /* fn suspended(&mut self, event_loop: &ActiveEventLoop) {
@@ -68,52 +102,38 @@ impl ApplicationHandler for App {
         
     } */
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {   
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {  
         match event {
             WindowEvent::CloseRequested => {
-                println!("The close button was pressed; stopping");
+                if let Some(input_event_channel_sender) = self.input_event_channel_sender.as_ref() {
+                    input_event_channel_sender.send(InputEvent::Shutdown);
+                }
+                else {
+                    return;
+                }
+
+                if let Some(control_thread) = self.control_thread.take() {
+                    control_thread.handle.join();
+                }
+                else {
+                    return;
+                }
+                
                 event_loop.exit();
-            }
-            WindowEvent::RedrawRequested => {
-                self.app_state.as_mut().unwrap().redraw_handle();
-            }
-            WindowEvent::Resized(physical_size) => {
-                // Reconfigures the size of the surface. We do not re-render
-                // here as this event is always followed up by redraw request.
-                //self.app_state.as_mut().unwrap().resize_handle(physical_size).unwrap();
             },
-            WindowEvent::KeyboardInput {  
-                event: KeyEvent {
-                    physical_key: PhysicalKey::Code(key_code),
-                    state: key_state,
-                    ..
-                },
-                ..
-            } => {
-                //self.app_state.as_mut().unwrap().keyboard_input_handle(key_code, key_state.is_pressed()).unwrap();
+            _ => {
+                self.input_event_thread_buffer_recorder.as_mut().unwrap().register_input_event(event);
             }
-            _ => (),
         }
+
+         
     }
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
-        match cause {
-            StartCause::Init => {
-                let app_state = AppState::default();
-
-                let timer = Timer::new();
-                
-                self.app_state = Some(app_state); 
-                self.timer = Some(timer);
-            },
+        match cause { 
             StartCause::Poll => {
-                let timer = self.timer.as_mut().unwrap();
-                let app_state_ref = self.app_state.as_mut().unwrap();
-
-                timer.update(); 
-
-                app_state_ref.get_window().request_redraw();
-                self.app_state.as_mut().unwrap().test_run();
+                let timer =self.timer.as_mut().unwrap();
+                timer.check_step_fixed(); 
             },
             // There are two another type of StartCause for another type of ControlFlow
             _ => {},    

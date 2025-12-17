@@ -43,7 +43,7 @@ use crate::{
 };
 
 #[allow(dead_code)]
-pub struct RenderState {
+pub struct RenderThreadState {
     pub instance: Instance,
     pub window: Arc<Window>,
     pub device: Device,
@@ -66,7 +66,7 @@ pub struct RenderState {
     pub camera_storage: CameraStorage,
 }
 
-impl RenderState {
+impl RenderThreadState {
     pub async fn new(window: Arc<Window>) -> Self {
         let instance = Instance::new(&InstanceDescriptor::default());
         let adapter = instance
