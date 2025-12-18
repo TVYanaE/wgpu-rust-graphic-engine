@@ -10,6 +10,7 @@ use crate::{
 pub enum IOThreadInputSignal {
     WinitEvent(WinitEvent),
     SendEventBuffer,
+    Init,
     Shutdown,
     Destroy,
 }

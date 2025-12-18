@@ -21,7 +21,7 @@ pub mod render_items;
 pub mod scheduler;
 pub mod shader_library;
 pub mod shapes;
-pub mod task_graph;
+pub mod task_chunk;
 pub mod texture_atlas;
 pub mod texture_info;
 pub mod timer;

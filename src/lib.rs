@@ -8,6 +8,7 @@ mod consts;
 use std::{
     sync::{Arc},
 };
+use rayon::{ThreadPoolBuilder};
 use flume::{unbounded, Sender,};
 use winit::{
     application::ApplicationHandler,
@@ -49,9 +50,14 @@ struct App {
 
     // Shared Thread State 
     shared_thread_state: Option<Arc<SharedThreadState>>,
-    //
+    
+    // timer
     timer: Option<Timer>,
+
+    // recorder of winit events
     winit_event_recorder: Option<WinitEventRecorder>,
+
+    // channel for IO thread
     io_thread_input_channel_sender: Option<Sender<IOThreadInputSignal>>,
 }
 
@@ -65,6 +71,19 @@ impl ApplicationHandler for App {
                 .create_window(Window::default_attributes())
                 .unwrap(),
             );   
+
+        // init rayon thread pool for Shipyard multithread 
+        let logical_cpu_number = num_cpus::get();
+
+        // Reserved for OS and GPU Thread 
+        let reserved_thread_number = 2;
+
+        let rayon_threads_number = logical_cpu_number.saturating_sub(reserved_thread_number).max(1);
+
+        ThreadPoolBuilder::new()
+            .num_threads(rayon_threads_number)
+            .build_global()
+            .expect("Rayon thread pool init error");
 
         // Init channels 
         let (
@@ -87,7 +106,10 @@ impl ApplicationHandler for App {
         // Init threads
         let render_thead = pollster::block_on(RenderThread::new(window));
         let io_thread = IOThread::start_thread(io_thread_input_channel_receiver, control_thread_input_channel_sender);
-        let control_thread = ControlThread::start_thread(control_thread_input_channel_receiver);
+        let control_thread = ControlThread::start_thread(
+            control_thread_input_channel_receiver, 
+            io_thread_input_channel_sender.clone()
+        );
 
         // Init Shader Thread state 
         let shared_thread_state = SharedThreadState::new(render_thead.get_material_manager());
@@ -104,6 +126,7 @@ impl ApplicationHandler for App {
         self.io_thread_input_channel_sender = Some(io_thread_input_channel_sender);
         self.timer = Some(timer);  
         
+        self.io_thread_input_channel_sender.as_ref().unwrap().send(IOThreadInputSignal::Init);
         
     }
 
@@ -152,8 +175,11 @@ impl ApplicationHandler for App {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         match cause { 
             StartCause::Poll => {
-                let timer =self.timer.as_mut().unwrap();
-                timer.check_step_fixed(); 
+                let timer = self.timer.as_mut().unwrap();
+                timer.update();
+                timer.check_logic_threshold();
+                timer.check_frame_threshold();
+
             },
             // There are two another type of StartCause for another type of ControlFlow
             _ => {},    

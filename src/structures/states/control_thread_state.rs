@@ -1,6 +1,7 @@
 use crate::{
     structures::{
-        scheduler::Scheduler
+        scheduler::Scheduler,
+        executeurs::global_executeur::GlobalExecuter,
     },
     enums::{ 
         event_enum::Event,
@@ -9,18 +10,43 @@ use crate::{
 };
 
 pub struct ControlThreadState {
-    scheduler: Scheduler,
-    task_buffer: Vec<Task>,
+    scheduler: Scheduler, 
+    global_executeur: GlobalExecuter,
 }
 
 impl ControlThreadState {
     pub fn new() -> Self {
         Self { 
             scheduler: Scheduler::new(),
-            task_buffer: Vec::with_capacity(32),
+            global_executeur: GlobalExecuter::new(),
         }
+    } 
+
+    pub fn run_logic(&mut self, event_buffer: impl Iterator<Item = Event>) {
+        let tasks = Task::events_to_tasks(event_buffer);
+
+        self.scheduler.create_schedule(tasks);
+
+        self.global_executeur.execute_schedule(self.scheduler.drain_schedule());
     }
-    pub fn run_logic(&mut self, event_buffer: impl Iterator<Item = Event>) {}
     
-    pub fn run_drawing(&mut self) {}
+    pub fn run_drawing(&mut self) {
+        let mut tasks = Vec::new();
+
+        tasks.push(Task::DrawRenderState);
+
+        self.scheduler.create_schedule(tasks);
+
+        self.global_executeur.execute_schedule(self.scheduler.drain_schedule());
+    }
+
+    pub fn init(&mut self) {
+        let mut tasks = Vec::new();
+
+        tasks.push(Task::Init);
+
+        self.scheduler.create_schedule(tasks);
+
+        self.global_executeur.execute_schedule(self.scheduler.drain_schedule());
+    }
 }

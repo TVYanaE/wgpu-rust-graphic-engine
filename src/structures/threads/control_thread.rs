@@ -37,6 +37,7 @@ impl ControlThread {
                 match control_thread_input_channel_receiver.recv() {
                     Ok(input_signal) => {
                         match input_signal {
+                            ControlThreadInputSignal::Init => { control_thread_state.init(); },
                             ControlThreadInputSignal::LogicTick => {
                                 io_thread_signal_input_channel_sender.send(IOThreadInputSignal::SendEventBuffer);
                             },

@@ -18,6 +18,8 @@ serde_json = "1.0"
 chrono = "0.4"
 shipyard = "0.10"
 flume = "0.12"
+rayon = "1.11"
+num_cpus = "1.17"
 
 [dependencies.serde]
 version = "1.0"

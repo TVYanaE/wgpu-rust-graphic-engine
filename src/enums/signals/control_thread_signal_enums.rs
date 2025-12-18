@@ -7,6 +7,7 @@ use crate::{
 
 pub enum ControlThreadInputSignal {
     EventBuffer(Vec<Event>),
+    Init,
     LogicTick,
     FrameTick,
 }

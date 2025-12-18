@@ -37,6 +37,9 @@ impl IOThread {
                             IOThreadInputSignal::WinitEvent(winit_event) => {
                                 event_buffer.push(Event::WinitEvent(winit_event));
                             },
+                            IOThreadInputSignal::Init => {
+                                control_thread_input_channel_sender.send(ControlThreadInputSignal::Init);
+                            },
                             IOThreadInputSignal::Shutdown => {
                                 event_buffer.push(Event::Shutdown);
                             },
