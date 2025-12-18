@@ -2,7 +2,7 @@ use std::{
     thread::{JoinHandle, self},
 };
 use flume::{
-    Receiver,
+    Receiver, Sender,
 };
 use crate::{
     structures::{
@@ -11,7 +11,11 @@ use crate::{
         },
     },
     enums::{
-        input_event_enum::InputEvent
+        signals::{
+            control_thread_signal_enums::ControlThreadInputSignal,
+            io_thread_signal_enums::IOThreadInputSignal,
+        },
+        event_enum::Event,
     },
 };
 
@@ -20,24 +24,39 @@ pub struct ControlThread {
 }
 
 impl ControlThread { 
-    pub fn start_thread(input_event_channel_receiver: Receiver<InputEvent>) -> Self {
+    pub fn start_thread(
+        control_thread_input_channel_receiver: Receiver<ControlThreadInputSignal>,
+        io_thread_signal_input_channel_sender: Sender<IOThreadInputSignal>,
+    ) -> Self {
         let handle = thread::spawn(move ||{
-            let mut control_thread_state = ControlThreadState::new(input_event_channel_receiver);
+            let mut control_thread_state = ControlThreadState::new();
+
+            let mut event_buffer = Vec::new();
 
             loop {
-                match control_thread_state.input_event_channel_receiver.recv() {
-                    Ok(input_event) => {
-                        match input_event {
-                            InputEvent::Shutdown => {
-                                // TODO: Create logic for gracefull shutdown
-                                break;
+                match control_thread_input_channel_receiver.recv() {
+                    Ok(input_signal) => {
+                        match input_signal {
+                            ControlThreadInputSignal::LogicTick => {
+                                io_thread_signal_input_channel_sender.send(IOThreadInputSignal::SendEventBuffer);
                             },
-                            InputEvent::FrameStart => {
-                                control_thread_state.frame_start();
+                            ControlThreadInputSignal::EventBuffer(mut income_event_buffer) => {
+                                if let Some(event) = income_event_buffer.pop() {
+                                    match event {
+                                        Event::Shutdown => { 
+                                            // TODO!: Create logic for gracefull Shutdown
+                                            break; 
+                                        },
+                                        _ => { event_buffer.push(event); } 
+                                    }
+                                }
+                                else {
+                                    control_thread_state.run_logic(event_buffer.drain(..)); 
+                                }
                             },
-                            _ => { 
-                                control_thread_state.input_event_buffer.push(input_event);
-                            }
+                            ControlThreadInputSignal::FrameTick => {
+                                control_thread_state.run_drawing();
+                            },
                         }
                     },
                     Err(_) => break,

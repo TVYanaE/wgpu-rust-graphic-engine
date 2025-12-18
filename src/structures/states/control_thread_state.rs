@@ -1,31 +1,26 @@
-
-use flume::{
-    Receiver,
-}; 
 use crate::{
     structures::{
         scheduler::Scheduler
     },
-    enums::{
-        input_event_enum::InputEvent
+    enums::{ 
+        event_enum::Event,
+        task_enum::Task,
     },
 };
 
 pub struct ControlThreadState {
-    pub input_event_channel_receiver: Receiver<InputEvent>,
-    pub scheduler: Scheduler,
-    pub input_event_buffer: Vec<InputEvent>,
+    scheduler: Scheduler,
+    task_buffer: Vec<Task>,
 }
 
 impl ControlThreadState {
-    pub fn new(input_event_channel_receiver: Receiver<InputEvent>,) -> Self {
+    pub fn new() -> Self {
         Self { 
             scheduler: Scheduler::new(),
-            input_event_channel_receiver: input_event_channel_receiver,
-            input_event_buffer: Vec::with_capacity(32),
+            task_buffer: Vec::with_capacity(32),
         }
     }
-    pub fn frame_start(&mut self) {
-        self.scheduler.frame_start(self.input_event_buffer.drain(..));   
-    }
+    pub fn run_logic(&mut self, event_buffer: impl Iterator<Item = Event>) {}
+    
+    pub fn run_drawing(&mut self) {}
 }

@@ -2,45 +2,62 @@ use std::time::{Instant, Duration};
 use flume::{Sender};
 use crate::{
     enums::{
-        input_event_enum::InputEvent,
+        signals::{
+            control_thread_signal_enums::ControlThreadInputSignal,
+        },
     },
 };
 
 pub struct Timer {
-    last_instant: Instant,
+    last_time_check: Instant,
     delta: Duration,
-    fixed_step: Duration,
-    accumulator: Duration,
-    input_event_channel_sender: Sender<InputEvent>,
+    frame_threshold: Duration,
+    logic_threshold: Duration,
+    frame_time_accumulator: Duration,
+    logic_time_accumulator: Duration,
+    control_thread_input_channel_sender: Sender<ControlThreadInputSignal>,
 }
 
 
 impl Timer {
-    pub fn new(input_event_channel_sender: Sender<InputEvent>) -> Self {
+    pub fn new(control_thread_input_channel_sender: Sender<ControlThreadInputSignal>) -> Self {
         Self { 
-            last_instant: Instant::now(), 
+            last_time_check: Instant::now(), 
             delta: Duration::ZERO, 
-            fixed_step: Duration::from_millis(17), 
-            accumulator: Duration::ZERO, 
-            input_event_channel_sender: input_event_channel_sender
+            frame_threshold: Duration::from_millis(17),
+            logic_threshold: Duration::from_millis(4),
+            logic_time_accumulator: Duration::ZERO,
+            frame_time_accumulator: Duration::ZERO,
+            control_thread_input_channel_sender
         }
     }
 
     pub fn update(&mut self) {
         let now = Instant::now();
-        self.delta = now - self.last_instant;
-        self.last_instant = now;
+        self.delta = now - self.last_time_check;
+        self.last_time_check = now;
  
-        self.accumulator += self.delta;
+        self.frame_time_accumulator += self.delta;
+        self.logic_time_accumulator += self.delta;
     }
         
-    pub fn check_step_fixed(&mut self) {
-        if self.accumulator >= self.fixed_step {
-            self.accumulator -= self.fixed_step;
-            self.input_event_channel_sender.send(InputEvent::FrameStart);
+    pub fn check_logic_threshold(&mut self) {
+        if self.logic_time_accumulator >= self.logic_threshold {
+            self.logic_time_accumulator -= self.logic_threshold;
+            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::LogicTick);
         }
         else {
             return;
         }
-    } 
+    }
+
+    pub fn check_frame_threshold(&mut self) {
+        if self.frame_time_accumulator >= self.frame_threshold {
+            self.frame_time_accumulator = Duration::ZERO;
+            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::FrameTick);
+        }
+        else {
+            return;
+        }
+    }
 }

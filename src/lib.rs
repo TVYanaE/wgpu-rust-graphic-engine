@@ -22,17 +22,21 @@ use crate::{
             shared_thread_state::SharedThreadState,
         },
         timer::Timer, 
-        thread_buffer_recorders::{
-            input_event_thread_buffer_recorder::InputEventThreadBufferRecorder,
+        recorders::{
+            winit_event_recorder::WinitEventRecorder,
         },
         threads::{
             render_thread::RenderThread,
+            io_thread::IOThread,
             control_thread::ControlThread,
         },
     },
     enums::{
-        input_event_enum::InputEvent, 
-    },
+        signals::{
+            io_thread_signal_enums::IOThreadInputSignal,
+            control_thread_signal_enums::ControlThreadInputSignal,
+        },
+    },  
 };
 
 #[derive(Default)]
@@ -40,14 +44,15 @@ struct App {
     app_state: Option<AppState>,
     // Threads 
     render_thread: Option<RenderThread>,
+    io_thread: Option<IOThread>,
     control_thread: Option<ControlThread>,
 
     // Shared Thread State 
     shared_thread_state: Option<Arc<SharedThreadState>>,
     //
     timer: Option<Timer>,
-    input_event_thread_buffer_recorder: Option<InputEventThreadBufferRecorder>,
-    input_event_channel_sender: Option<Sender<InputEvent>>,
+    winit_event_recorder: Option<WinitEventRecorder>,
+    io_thread_input_channel_sender: Option<Sender<IOThreadInputSignal>>,
 }
 
 impl ApplicationHandler for App {
@@ -62,33 +67,41 @@ impl ApplicationHandler for App {
             );   
 
         // Init channels 
-        let (input_event_channel_sender, input_event_channel_receiver) = unbounded::<InputEvent>();
+        let (
+            io_thread_input_channel_sender,
+            io_thread_input_channel_receiver
+        ) = unbounded::<IOThreadInputSignal>();
 
+        let (
+            control_thread_input_channel_sender,
+            control_thread_input_channel_receiver
+        ) = unbounded::<ControlThreadInputSignal>();
         // Init exchange thread buffers
 
         // Init exchande thread buffers recorders
-        let input_event_thread_buffer_recorder = 
-            InputEventThreadBufferRecorder::new(input_event_channel_sender.clone());
+        let winit_event_recorder = WinitEventRecorder::new(io_thread_input_channel_sender.clone()); 
 
         // Init Timer 
-        let timer = Timer::new(input_event_channel_sender.clone()); 
+        let timer = Timer::new(control_thread_input_channel_sender.clone()); 
 
         // Init threads
         let render_thead = pollster::block_on(RenderThread::new(window));
-        let control_thread = ControlThread::start_thread(input_event_channel_receiver);
+        let io_thread = IOThread::start_thread(io_thread_input_channel_receiver, control_thread_input_channel_sender);
+        let control_thread = ControlThread::start_thread(control_thread_input_channel_receiver);
 
         // Init Shader Thread state 
         let shared_thread_state = SharedThreadState::new(render_thead.get_material_manager());
 
         // Save into App
         self.render_thread = Some(render_thead);
+        self.io_thread = Some(io_thread);
         self.control_thread = Some(control_thread);
 
         self.shared_thread_state = Some(Arc::new(shared_thread_state));
 
-        self.input_event_thread_buffer_recorder = Some(input_event_thread_buffer_recorder);
+        self.winit_event_recorder = Some(winit_event_recorder);
 
-        self.input_event_channel_sender = Some(input_event_channel_sender);
+        self.io_thread_input_channel_sender = Some(io_thread_input_channel_sender);
         self.timer = Some(timer);  
         
         
@@ -105,8 +118,8 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {  
         match event {
             WindowEvent::CloseRequested => {
-                if let Some(input_event_channel_sender) = self.input_event_channel_sender.as_ref() {
-                    input_event_channel_sender.send(InputEvent::Shutdown);
+                if let Some(io_thread_input_channel_sender) = self.io_thread_input_channel_sender.as_ref() {
+                    io_thread_input_channel_sender.send(IOThreadInputSignal::Shutdown);
                 }
                 else {
                     return;
@@ -118,11 +131,18 @@ impl ApplicationHandler for App {
                 else {
                     return;
                 }
+
+                if let Some(io_thread) = self.io_thread.take() {
+                    io_thread.handle.join();
+                }
+                else{
+                    
+                }
                 
                 event_loop.exit();
             },
             _ => {
-                self.input_event_thread_buffer_recorder.as_mut().unwrap().register_input_event(event);
+                self.winit_event_recorder.as_mut().unwrap().register_input_event(event);
             }
         }
 

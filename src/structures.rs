@@ -4,7 +4,7 @@ pub mod executeurs;
 pub mod managers;
 pub mod states;
 pub mod systems;
-pub mod thread_buffer_recorders;
+pub mod recorders;
 pub mod thread_buffers;
 pub mod threads;
 pub mod uniques;
