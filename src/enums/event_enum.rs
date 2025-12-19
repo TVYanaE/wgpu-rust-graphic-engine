@@ -4,7 +4,11 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone)]
 pub enum Event {
     WinitEvent(WinitEvent),
+    FrameTick,
+    LogicTick,
+    Init,
     Shutdown,
 }

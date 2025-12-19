@@ -12,8 +12,12 @@ use crate::{
         signals::{
             io_thread_signal_enums::IOThreadInputSignal,
             control_thread_signal_enums::ControlThreadInputSignal,
+        }, 
+    },
+    structures::{
+        recorders::{
+            io_thread_recorder::IOThreadRecorder,
         },
-        event_enum::Event,
     },
 };
 
@@ -27,30 +31,18 @@ impl IOThread {
         control_thread_input_channel_sender: Sender<ControlThreadInputSignal>,
     ) -> Self {
         let handle = thread::spawn(move ||{
-            let mut event_buffer: Vec<Event> = Vec::new();
-
+            let mut io_thread_recorder = 
+                IOThreadRecorder::new(
+                io_thread_input_channel_receiver, 
+                control_thread_input_channel_sender
+            );  
+            
             loop {
-                match io_thread_input_channel_receiver.recv() {
-                    Ok(io_input_signal) => {
-                        match io_input_signal {
-                            IOThreadInputSignal::Destroy => { break; },
-                            IOThreadInputSignal::WinitEvent(winit_event) => {
-                                event_buffer.push(Event::WinitEvent(winit_event));
-                            },
-                            IOThreadInputSignal::Init => {
-                                control_thread_input_channel_sender.send(ControlThreadInputSignal::Init);
-                            },
-                            IOThreadInputSignal::Shutdown => {
-                                event_buffer.push(Event::Shutdown);
-                            },
-                            IOThreadInputSignal::SendEventBuffer => {
-                                let buffer: Vec<Event> = event_buffer.drain(..).collect();
-                               
-                                control_thread_input_channel_sender.send(ControlThreadInputSignal::EventBuffer(buffer));
-                            },
-                        } 
-                    },
-                    Err(_) => { break; }
+                if let Some(_) = io_thread_recorder.listen_input_channel(){
+                    continue;
+                }
+                else {
+                    break;
                 }
             }
         });

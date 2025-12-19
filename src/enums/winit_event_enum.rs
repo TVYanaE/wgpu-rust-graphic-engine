@@ -3,6 +3,7 @@ use winit::{
     event::{WindowEvent},
 };
 
+#[derive(Debug, Clone)]
 pub enum WinitEvent {
     WindowEvent(WindowEvent),
 }

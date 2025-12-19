@@ -28,15 +28,14 @@ use crate::{
         },
         threads::{
             render_thread::RenderThread,
-            io_thread::IOThread,
             control_thread::ControlThread,
         },
     },
     enums::{
         signals::{
-            io_thread_signal_enums::IOThreadInputSignal,
             control_thread_signal_enums::ControlThreadInputSignal,
         },
+        event_enum::Event,
     },  
 };
 
@@ -45,7 +44,6 @@ struct App {
     app_state: Option<AppState>,
     // Threads 
     render_thread: Option<RenderThread>,
-    io_thread: Option<IOThread>,
     control_thread: Option<ControlThread>,
 
     // Shared Thread State 
@@ -57,8 +55,8 @@ struct App {
     // recorder of winit events
     winit_event_recorder: Option<WinitEventRecorder>,
 
-    // channel for IO thread
-    io_thread_input_channel_sender: Option<Sender<IOThreadInputSignal>>,
+    // channel for ControlThread
+    control_thread_input_channel_sender: Option<Sender<ControlThreadInputSignal>> 
 }
 
 impl ApplicationHandler for App {
@@ -85,11 +83,7 @@ impl ApplicationHandler for App {
             .build_global()
             .expect("Rayon thread pool init error");
 
-        // Init channels 
-        let (
-            io_thread_input_channel_sender,
-            io_thread_input_channel_receiver
-        ) = unbounded::<IOThreadInputSignal>();
+        // Init channels  
 
         let (
             control_thread_input_channel_sender,
@@ -98,36 +92,30 @@ impl ApplicationHandler for App {
         // Init exchange thread buffers
 
         // Init exchande thread buffers recorders
-        let winit_event_recorder = WinitEventRecorder::new(io_thread_input_channel_sender.clone()); 
+        let winit_event_recorder = WinitEventRecorder::new(control_thread_input_channel_sender.clone()); 
 
         // Init Timer 
         let timer = Timer::new(control_thread_input_channel_sender.clone()); 
 
         // Init threads
-        let render_thead = pollster::block_on(RenderThread::new(window));
-        let io_thread = IOThread::start_thread(io_thread_input_channel_receiver, control_thread_input_channel_sender);
-        let control_thread = ControlThread::start_thread(
-            control_thread_input_channel_receiver, 
-            io_thread_input_channel_sender.clone()
-        );
+        let render_thead = pollster::block_on(RenderThread::new(window)); 
+        let control_thread = ControlThread::start_thread(control_thread_input_channel_receiver);
 
         // Init Shader Thread state 
         let shared_thread_state = SharedThreadState::new(render_thead.get_material_manager());
 
         // Save into App
         self.render_thread = Some(render_thead);
-        self.io_thread = Some(io_thread);
         self.control_thread = Some(control_thread);
 
         self.shared_thread_state = Some(Arc::new(shared_thread_state));
 
         self.winit_event_recorder = Some(winit_event_recorder);
 
-        self.io_thread_input_channel_sender = Some(io_thread_input_channel_sender);
-        self.timer = Some(timer);  
-        
-        self.io_thread_input_channel_sender.as_ref().unwrap().send(IOThreadInputSignal::Init);
-        
+        self.timer = Some(timer); 
+
+        self.control_thread_input_channel_sender.as_ref().unwrap().send(ControlThreadInputSignal::Event(Event::Init));
+         
     }
 
     /* fn suspended(&mut self, event_loop: &ActiveEventLoop) {
@@ -141,26 +129,20 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {  
         match event {
             WindowEvent::CloseRequested => {
-                if let Some(io_thread_input_channel_sender) = self.io_thread_input_channel_sender.as_ref() {
-                    io_thread_input_channel_sender.send(IOThreadInputSignal::Shutdown);
-                }
-                else {
-                    return;
-                }
+                 
+                self.control_thread_input_channel_sender
+                    .as_ref()
+                    .unwrap()
+                    .send(ControlThreadInputSignal::Event(Event::Shutdown));
 
                 if let Some(control_thread) = self.control_thread.take() {
                     control_thread.handle.join();
                 }
                 else {
                     return;
-                }
-
-                if let Some(io_thread) = self.io_thread.take() {
-                    io_thread.handle.join();
-                }
-                else{
-                    
-                }
+                } 
+                
+                // TODO!: for another threads 
                 
                 event_loop.exit();
             },

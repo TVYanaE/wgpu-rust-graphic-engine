@@ -1,5 +1,7 @@
 use std::{
     thread::{JoinHandle, self},
+    rc::Rc,
+    cell::RefCell,
 };
 use flume::{
     Receiver, Sender,
@@ -9,11 +11,17 @@ use crate::{
         states::{
             control_thread_state::ControlThreadState,
         },
+        buses::{
+            control_thread_message_bus::ControlThreadMessagesBus,
+            control_thread_data_bus::ControlThreadDataBus,
+        },
+        recorders::{
+            control_thread_recorder::ControlThreadRecorder,
+        },
     },
     enums::{
         signals::{
             control_thread_signal_enums::ControlThreadInputSignal,
-            io_thread_signal_enums::IOThreadInputSignal,
         },
         event_enum::Event,
     },
@@ -26,41 +34,36 @@ pub struct ControlThread {
 impl ControlThread { 
     pub fn start_thread(
         control_thread_input_channel_receiver: Receiver<ControlThreadInputSignal>,
-        io_thread_signal_input_channel_sender: Sender<IOThreadInputSignal>,
     ) -> Self {
         let handle = thread::spawn(move ||{
-            let mut control_thread_state = ControlThreadState::new();
+            let control_thread_message_bus = Rc::new(
+                RefCell::new(ControlThreadMessagesBus::new())
+            );
 
-            let mut event_buffer = Vec::new();
+            let control_thread_data_bus = Rc::new(
+                RefCell::new(ControlThreadDataBus::new())
+            );
+
+            let mut control_thread_recorder = ControlThreadRecorder::new(
+                control_thread_input_channel_receiver, 
+                control_thread_message_bus.clone(), 
+                control_thread_data_bus.clone()
+            );
+
+            //let mut control_thread_state = ControlThreadState::new();
+
+            //let mut event_buffer = Vec::new();
+            
+            let mut is_shutdown_signal_received = false;
 
             loop {
-                match control_thread_input_channel_receiver.recv() {
-                    Ok(input_signal) => {
-                        match input_signal {
-                            ControlThreadInputSignal::Init => { control_thread_state.init(); },
-                            ControlThreadInputSignal::LogicTick => {
-                                io_thread_signal_input_channel_sender.send(IOThreadInputSignal::SendEventBuffer);
-                            },
-                            ControlThreadInputSignal::EventBuffer(mut income_event_buffer) => {
-                                if let Some(event) = income_event_buffer.pop() {
-                                    match event {
-                                        Event::Shutdown => { 
-                                            // TODO!: Create logic for gracefull Shutdown
-                                            break; 
-                                        },
-                                        _ => { event_buffer.push(event); } 
-                                    }
-                                }
-                                else {
-                                    control_thread_state.run_logic(event_buffer.drain(..)); 
-                                }
-                            },
-                            ControlThreadInputSignal::FrameTick => {
-                                control_thread_state.run_drawing();
-                            },
-                        }
-                    },
-                    Err(_) => break,
+                if let None = control_thread_recorder.listen_input_channel() {
+                    is_shutdown_signal_received = true; 
+                }
+
+                
+                if is_shutdown_signal_received {
+                    break;
                 }
             }
         });

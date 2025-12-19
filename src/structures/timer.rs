@@ -5,6 +5,7 @@ use crate::{
         signals::{
             control_thread_signal_enums::ControlThreadInputSignal,
         },
+        event_enum::Event,
     },
 };
 
@@ -44,7 +45,7 @@ impl Timer {
     pub fn check_logic_threshold(&mut self) {
         if self.logic_time_accumulator >= self.logic_threshold {
             self.logic_time_accumulator -= self.logic_threshold;
-            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::LogicTick);
+            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::Event(Event::LogicTick));
         }
         else {
             return;
@@ -54,7 +55,7 @@ impl Timer {
     pub fn check_frame_threshold(&mut self) {
         if self.frame_time_accumulator >= self.frame_threshold {
             self.frame_time_accumulator = Duration::ZERO;
-            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::FrameTick);
+            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::Event(Event::FrameTick));
         }
         else {
             return;
