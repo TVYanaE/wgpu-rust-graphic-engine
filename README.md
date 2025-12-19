@@ -1,1 +1,1 @@
-# Vulkan-rust-graphic-engine-
+# WGPU based rust graphic engine
