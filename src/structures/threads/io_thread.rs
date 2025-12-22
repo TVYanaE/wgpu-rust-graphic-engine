@@ -3,21 +3,22 @@ use std::{
         self,
         JoinHandle,
     },
+    sync::{Mutex, Arc},
 };
 use flume::{
-    Receiver, Sender,
+    Receiver, 
 };
 use crate::{
     enums::{
         signals::{
             io_thread_signal_enums::IOThreadInputSignal,
-            control_thread_signal_enums::ControlThreadInputSignal,
-        }, 
+        },
+        event_enum::Event,
     },
     structures::{
-        recorders::{
-            io_thread_recorder::IOThreadRecorder,
-        },
+        buses::{
+            io_bus::IOBus,
+        }, 
     },
 };
 
@@ -28,22 +29,26 @@ pub struct IOThread {
 impl IOThread {
     pub fn start_thread(
         io_thread_input_channel_receiver: Receiver<IOThreadInputSignal>,
-        control_thread_input_channel_sender: Sender<ControlThreadInputSignal>,
+        io_bus: Arc<Mutex<IOBus>>,
     ) -> Self {
         let handle = thread::spawn(move ||{
-            let mut io_thread_recorder = 
-                IOThreadRecorder::new(
-                io_thread_input_channel_receiver, 
-                control_thread_input_channel_sender
-            );  
-            
+
+        let io_bus = io_bus;
+
             loop {
-                if let Some(_) = io_thread_recorder.listen_input_channel(){
-                    continue;
-                }
-                else {
-                    break;
-                }
+                match io_thread_input_channel_receiver.recv() {
+                    Ok(io_thread_input_signal) => {
+                        match io_thread_input_signal {
+                            IOThreadInputSignal::WinitEvent(winit_event) => {
+                                let event = Event::WinitEvent(winit_event);
+
+                                io_bus.lock().unwrap().push(event);
+
+                            }
+                        }
+                    },
+                    Err(_) => { break; }
+                }    
             }
         });
         Self { handle }

@@ -45,7 +45,7 @@ impl Timer {
     pub fn check_logic_threshold(&mut self) {
         if self.logic_time_accumulator >= self.logic_threshold {
             self.logic_time_accumulator -= self.logic_threshold;
-            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::Event(Event::LogicTick));
+            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::LogicStart);
         }
         else {
             return;
@@ -55,7 +55,7 @@ impl Timer {
     pub fn check_frame_threshold(&mut self) {
         if self.frame_time_accumulator >= self.frame_threshold {
             self.frame_time_accumulator = Duration::ZERO;
-            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::Event(Event::FrameTick));
+            self.control_thread_input_channel_sender.send(ControlThreadInputSignal::FrameStart);
         }
         else {
             return;

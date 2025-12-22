@@ -1,19 +1,7 @@
-use winit::{
-    event::WindowEvent,
-};
-use crate::{
-    enums::{
-        event_enum::Event, 
-        winit_event_enum::WinitEvent,
-    },
-};
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ControlThreadInputSignal {
-    Event(Event) 
-}
-
-impl From<WindowEvent> for ControlThreadInputSignal {
-    fn from(value: WindowEvent) -> Self {
-        Self::Event(Event::WinitEvent(WinitEvent::WindowEvent(value)))
-    }
+    LogicStart,
+    FrameStart,
+    Init,
+    Shutdown,
 }

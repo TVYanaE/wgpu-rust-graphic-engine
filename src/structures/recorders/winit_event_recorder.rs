@@ -4,22 +4,23 @@ use flume::{
 use crate::{ 
     enums::{
         signals::{
-            control_thread_signal_enums::ControlThreadInputSignal,
+            io_thread_signal_enums::IOThreadInputSignal
         },
+        winit_event_enum::WinitEvent,
     },
 };
 
 pub struct WinitEventRecorder {
-    control_thread_input_channel_sender: Sender<ControlThreadInputSignal>, 
+    io_thread_input_channel_sender: Sender<IOThreadInputSignal>, 
 }
 
 impl WinitEventRecorder {
-    pub fn new(control_thread_input_channel_sender: Sender<ControlThreadInputSignal>,) -> Self {
-        Self { control_thread_input_channel_sender: control_thread_input_channel_sender }
+    pub fn new(io_thread_input_channel_sender: Sender<IOThreadInputSignal>,) -> Self {
+        Self { io_thread_input_channel_sender: io_thread_input_channel_sender }
     }
 
-    pub fn register_input_event(&self, input_event: impl Into<ControlThreadInputSignal>) {
-        self.control_thread_input_channel_sender.send(input_event.into());
+    pub fn register_input_event(&self, winit_event: impl Into<WinitEvent>) {
+        self.io_thread_input_channel_sender.send(IOThreadInputSignal::WinitEvent(winit_event.into()));
     }
 }
 

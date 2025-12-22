@@ -4,11 +4,11 @@ use crate::{
     },
 };
 
-pub struct IOThreadBus {
+pub struct IOBus {
     event_buffer: Vec<Event>
 }
 
-impl IOThreadBus {
+impl IOBus {
     pub fn new() -> Self {
         Self { event_buffer: Vec::new() }
     }

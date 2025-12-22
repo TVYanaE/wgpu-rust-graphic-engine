@@ -6,7 +6,7 @@ mod aliases;
 mod consts;
 
 use std::{
-    sync::{Arc},
+    sync::{Arc, Mutex},
 };
 use rayon::{ThreadPoolBuilder};
 use flume::{unbounded, Sender,};
@@ -18,6 +18,9 @@ use winit::{
 };
 use crate::{
     structures::{
+        buses::{
+            io_bus::IOBus,
+        },
         states::{
             app_state::AppState,
             shared_thread_state::SharedThreadState,
@@ -29,13 +32,14 @@ use crate::{
         threads::{
             render_thread::RenderThread,
             control_thread::ControlThread,
+            io_thread::IOThread,
         },
     },
     enums::{
         signals::{
             control_thread_signal_enums::ControlThreadInputSignal,
+            io_thread_signal_enums::IOThreadInputSignal,
         },
-        event_enum::Event,
     },  
 };
 
@@ -45,10 +49,14 @@ struct App {
     // Threads 
     render_thread: Option<RenderThread>,
     control_thread: Option<ControlThread>,
+    io_thread: Option<IOThread>,
 
     // Shared Thread State 
     shared_thread_state: Option<Arc<SharedThreadState>>,
     
+    // Buses 
+    io_bus: Option<Arc<Mutex<IOBus>>>,
+
     // timer
     timer: Option<Timer>,
 
@@ -89,17 +97,28 @@ impl ApplicationHandler for App {
             control_thread_input_channel_sender,
             control_thread_input_channel_receiver
         ) = unbounded::<ControlThreadInputSignal>();
-        // Init exchange thread buffers
 
-        // Init exchande thread buffers recorders
-        let winit_event_recorder = WinitEventRecorder::new(control_thread_input_channel_sender.clone()); 
+        let (
+            io_thread_input_channel_sender,
+            io_thread_input_channel_receiver,
+        ) = unbounded::<IOThreadInputSignal>();
+
+        // Init exchange thread buffers and buses 
+        let io_bus = Arc::new(Mutex::new(IOBus::new()));
+
+        // Init winit event recorder  
+        let winit_event_recorder = WinitEventRecorder::new(io_thread_input_channel_sender.clone()); 
 
         // Init Timer 
         let timer = Timer::new(control_thread_input_channel_sender.clone()); 
 
         // Init threads
         let render_thead = pollster::block_on(RenderThread::new(window)); 
-        let control_thread = ControlThread::start_thread(control_thread_input_channel_receiver);
+        let io_thread = IOThread::start_thread(io_thread_input_channel_receiver, io_bus.clone()); 
+        let control_thread = ControlThread::start_thread(
+            control_thread_input_channel_receiver,
+            io_bus.clone(),
+        );
 
         // Init Shader Thread state 
         let shared_thread_state = SharedThreadState::new(render_thead.get_material_manager());
@@ -107,14 +126,16 @@ impl ApplicationHandler for App {
         // Save into App
         self.render_thread = Some(render_thead);
         self.control_thread = Some(control_thread);
+        self.io_thread = Some(io_thread);
 
         self.shared_thread_state = Some(Arc::new(shared_thread_state));
-
+        self.io_bus = Some(io_bus);
+        
         self.winit_event_recorder = Some(winit_event_recorder);
-
         self.timer = Some(timer); 
+        self.control_thread_input_channel_sender = Some(control_thread_input_channel_sender);
 
-        self.control_thread_input_channel_sender.as_ref().unwrap().send(ControlThreadInputSignal::Event(Event::Init));
+        self.control_thread_input_channel_sender.as_ref().unwrap().send(ControlThreadInputSignal::Init);
          
     }
 
@@ -133,7 +154,7 @@ impl ApplicationHandler for App {
                 self.control_thread_input_channel_sender
                     .as_ref()
                     .unwrap()
-                    .send(ControlThreadInputSignal::Event(Event::Shutdown));
+                    .send(ControlThreadInputSignal::Shutdown);
 
                 if let Some(control_thread) = self.control_thread.take() {
                     control_thread.handle.join();
