@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-pub struct ControlThreadMessagesBus {
+pub struct ControlThreadMessagesBus { 
     task_queue: VecDeque<Task>, 
 }
 

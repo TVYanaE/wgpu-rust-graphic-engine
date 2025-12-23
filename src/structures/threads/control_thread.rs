@@ -5,20 +5,26 @@ use std::{
     sync::{Arc, Mutex},
 };
 use flume::{
-    Receiver, Sender,
+    Receiver,
 };
 use crate::{
     structures::{
         buses::{
             control_thread_message_bus::ControlThreadMessagesBus,
+            control_thread_data_bus::ControlThreadDataBus,
             io_bus::IOBus,
         },
         managers::{
             control_thread_phase_manager::ControlThreadPhaseManager,
+            control_thread_io_event_manager::ControlThreadIOEventManager,
         },  
         states::{
             phase_state::PhaseState,
+            dynamic_shared_thread_state::DynamicSharedThreadState,
         },
+        control_thread_signal_storage::ControlThreadSignalStorage,
+        task_generator::TaskGenerator,
+        scheduler::Scheduler,
     },
     enums::{
         signals::{
@@ -35,26 +41,46 @@ impl ControlThread {
     pub fn start_thread(
         control_thread_input_channel_receiver: Receiver<ControlThreadInputSignal>,
         io_bus: Arc<Mutex<IOBus>>,
+        dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
     ) -> Self {
         let handle = thread::spawn(move ||{
             let control_thread_message_bus = Rc::new(
                 RefCell::new(ControlThreadMessagesBus::new())
             );
 
+            let control_thread_data_bus = Rc::new(
+                RefCell::new(ControlThreadDataBus::new())
+            );
+
             let phase_state= Rc::new(RefCell::new(PhaseState::new()));
 
-            let mut control_thread_phase_manager = ControlThreadPhaseManager::new(
-                phase_state.clone(), 
-                control_thread_input_channel_receiver, 
-                control_thread_message_bus.clone()
+            let control_thread_signal_storage = Rc::new(
+                RefCell::new(ControlThreadSignalStorage::new(control_thread_input_channel_receiver))
             ); 
 
-            //let mut control_thread_state = ControlThreadState::new();
+            let control_thread_io_event_manager = Rc::new(
+                RefCell::new(ControlThreadIOEventManager::new(io_bus, control_thread_data_bus.clone()))
+            );
 
-            //let mut event_buffer = Vec::new();
+            let mut control_thread_phase_manager = ControlThreadPhaseManager::new(
+                phase_state.clone(),
+                control_thread_io_event_manager,
+                control_thread_signal_storage.clone(),
+            ); 
+
+            let task_generator = TaskGenerator::new(
+                control_thread_data_bus.clone(), 
+                phase_state,
+                dynamic_shared_thread_state,
+            ); 
+
+            let mut scheduler = Scheduler::new(control_thread_data_bus); 
             
             loop {
-                control_thread_phase_manager.start().unwrap(); 
+                control_thread_signal_storage.borrow_mut().start().unwrap();
+                control_thread_phase_manager.start();
+                task_generator.start();
+                scheduler.start();
             }
         });
 

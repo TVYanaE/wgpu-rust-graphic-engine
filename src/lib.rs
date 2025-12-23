@@ -23,7 +23,8 @@ use crate::{
         },
         states::{
             app_state::AppState,
-            shared_thread_state::SharedThreadState,
+            static_shared_thread_state::StaticSharedThreadState,
+            dynamic_shared_thread_state::DynamicSharedThreadState,
         },
         timer::Timer, 
         recorders::{
@@ -51,9 +52,10 @@ struct App {
     control_thread: Option<ControlThread>,
     io_thread: Option<IOThread>,
 
-    // Shared Thread State 
-    shared_thread_state: Option<Arc<SharedThreadState>>,
-    
+    // Shared Thread States 
+    static_shared_thread_state: Option<Arc<StaticSharedThreadState>>,
+    dynamic_shared_thread_state: Option<Arc<Mutex<DynamicSharedThreadState>>>,
+
     // Buses 
     io_bus: Option<Arc<Mutex<IOBus>>>,
 
@@ -112,23 +114,31 @@ impl ApplicationHandler for App {
         // Init Timer 
         let timer = Timer::new(control_thread_input_channel_sender.clone()); 
 
+        // Init dynamic shader thread state 
+        let dynamic_shared_thread_state = Arc::new(
+            Mutex::new(DynamicSharedThreadState::new())
+        );
+
         // Init threads
         let render_thead = pollster::block_on(RenderThread::new(window)); 
         let io_thread = IOThread::start_thread(io_thread_input_channel_receiver, io_bus.clone()); 
         let control_thread = ControlThread::start_thread(
             control_thread_input_channel_receiver,
             io_bus.clone(),
+            dynamic_shared_thread_state.clone(),
         );
 
-        // Init Shader Thread state 
-        let shared_thread_state = SharedThreadState::new(render_thead.get_material_manager());
+        // Init static Shader Thread state 
+        let static_shared_thread_state = StaticSharedThreadState::new(render_thead.get_material_manager());
 
         // Save into App
         self.render_thread = Some(render_thead);
         self.control_thread = Some(control_thread);
         self.io_thread = Some(io_thread);
 
-        self.shared_thread_state = Some(Arc::new(shared_thread_state));
+        self.static_shared_thread_state = Some(Arc::new(static_shared_thread_state));
+        self.dynamic_shared_thread_state = Some(dynamic_shared_thread_state); 
+
         self.io_bus = Some(io_bus);
         
         self.winit_event_recorder = Some(winit_event_recorder);

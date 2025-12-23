@@ -5,7 +5,7 @@ pub mod signals;
 pub mod bind_group_layout_name_enum;
 pub mod bind_group_name_enum;
 pub mod errors;
-pub mod event_enum;
+pub mod io_event_enum;
 pub mod material_name_enum;
 pub mod phase_enum;
 pub mod render_pipeline_name_enum;

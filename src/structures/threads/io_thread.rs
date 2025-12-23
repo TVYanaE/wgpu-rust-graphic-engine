@@ -13,7 +13,7 @@ use crate::{
         signals::{
             io_thread_signal_enums::IOThreadInputSignal,
         },
-        event_enum::Event,
+        io_event_enum::IOEvent,
     },
     structures::{
         buses::{
@@ -40,7 +40,7 @@ impl IOThread {
                     Ok(io_thread_input_signal) => {
                         match io_thread_input_signal {
                             IOThreadInputSignal::WinitEvent(winit_event) => {
-                                let event = Event::WinitEvent(winit_event);
+                                let event = IOEvent::WinitEvent(winit_event);
 
                                 io_bus.lock().unwrap().push(event);
 

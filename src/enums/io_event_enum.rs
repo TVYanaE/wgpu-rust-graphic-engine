@@ -5,6 +5,6 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Event {
+pub enum IOEvent {
     WinitEvent(WinitEvent), 
 }

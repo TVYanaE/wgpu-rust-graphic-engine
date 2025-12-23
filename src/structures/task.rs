@@ -1,13 +1,12 @@
-
 use crate::{
     enums::{
-        phase_enum::Phase,
         task_type_enum::TaskType,
+        phase_enum::Phase,
     },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Task {
     pub task_type: TaskType,
-    pub work_phase: Phase, 
+    pub phase: Phase,
 }

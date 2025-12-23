@@ -15,7 +15,7 @@ pub enum EngineError {
 
 #[allow(dead_code)]
 #[derive(Error, Debug)]
-pub enum ControlThreadPhaseManagerError {
+pub enum ControlThreadSignalStorageError {
     
     #[error("Thread channel has been closed {0}")]
     ChannelClosedError(#[from] flume::TryRecvError),

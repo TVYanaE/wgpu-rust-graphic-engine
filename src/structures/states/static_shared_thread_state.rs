@@ -7,11 +7,11 @@ use crate::{
     },
 };
 
-pub struct SharedThreadState {
+pub struct StaticSharedThreadState {
     material_manager: Arc<MaterialManager>,
 }
 
-impl SharedThreadState {
+impl StaticSharedThreadState {
     pub fn new(material_manager: Arc<MaterialManager>) -> Self {
         Self { material_manager }
     }
