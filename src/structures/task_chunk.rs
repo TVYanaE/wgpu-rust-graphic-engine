@@ -3,14 +3,17 @@ use std::{
 };
 use crate::{
     enums::{
-        task_enum::Task,
+        task_type_enum::TaskType,
+    },
+    structures::{
+        task::Task,
     },
 };
 
 
 pub struct TaskChunk {
     tasks: Vec<Task>,
-    forbiden_task_list: HashSet<Task>
+    forbiden_task_list: HashSet<TaskType>
 }
 
 impl TaskChunk {
@@ -19,10 +22,10 @@ impl TaskChunk {
     }
 
     pub fn try_insert_task(&mut self, task: Task) -> bool {
-        let requirements = task.get_requirements();
+        let requirements = task.task_type.get_requirements();
 
         for requirement in requirements.iter() {
-            if self.forbiden_task_list.contains(&requirement) {
+            if self.forbiden_task_list.contains(requirement) {
                 return false;
             }
         }

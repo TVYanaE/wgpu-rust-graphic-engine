@@ -7,7 +7,7 @@ use flume::{
 use crate::{
     enums::{
         signals::{
-            ecs_thread_signal_enums::ECSThreadSignal,
+            ecs_thread_signal_enums::ECSThreadInputSignal,
         },
     },
 };
@@ -20,7 +20,7 @@ pub struct ECSThread {
 
 impl ECSThread {
     pub fn start_thread(
-        ecs_thread_input_channel_receiver: Receiver<ECSThreadSignal>,
+        ecs_thread_input_channel_receiver: Receiver<ECSThreadInputSignal>,
         
     ) -> Self {
         let handle = thread::spawn( move ||{

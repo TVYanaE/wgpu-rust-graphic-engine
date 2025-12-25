@@ -1,4 +1,5 @@
 pub mod control_thread;
 pub mod ecs_thread;
+pub mod executeur_thread;
 pub mod io_thread;
 pub mod render_thread;

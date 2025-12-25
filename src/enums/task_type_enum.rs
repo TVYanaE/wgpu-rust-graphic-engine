@@ -12,3 +12,18 @@ pub enum TaskType {
     Resize,
     UnknowTask,
 }
+
+
+impl TaskType {
+    pub fn get_requirements(&self) -> Vec<TaskType> {
+        match self {
+            TaskType::Init => { vec![] },
+            TaskType::Shutdown => { vec![] },
+            TaskType::LogicCalculation => { vec![] },
+            TaskType::PrepareRenderState => { vec![] },
+            TaskType::DrawRenderState => { vec![] },
+            TaskType::Resize => { vec![] },
+            TaskType::UnknowTask => { vec![] },
+        }
+    }
+}

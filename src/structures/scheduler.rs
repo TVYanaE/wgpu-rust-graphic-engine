@@ -1,63 +1,80 @@
 use std::{
     cell::RefCell,
     rc::Rc,
-    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
 };
-use crate::{  
+use flume::{
+    Sender
+};
+use crate::{
     structures::{
         buses::{
             control_thread_data_bus::ControlThreadDataBus,
         },
-        states::{
-            phase_state::PhaseState,
-        },
         task::Task,
-    }, 
+        task_chunk::{TaskChunk},
+        states::{
+            dynamic_shared_thread_state::DynamicSharedThreadState,
+        },
+    },
     enums::{
-        phase_enum::Phase,
+        signals::{
+            executeur_thread_signal_enums::ExecuteurThreadInputSignal,
+        },
     },
 };
 
 pub struct Scheduler {  
-    control_thread_data_bus: Rc<RefCell<ControlThreadDataBus>>,
-    task_debds: HashMap<Phase, VecDeque<Task>>,
-    phase_state: Rc<RefCell<PhaseState>>,
+    control_thread_data_bus: Rc<RefCell<ControlThreadDataBus>>, 
+    dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
+    executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>,
 }
 
 impl Scheduler {
     pub fn new(
         control_thread_data_bus: Rc<RefCell<ControlThreadDataBus>>,
-        phase_state: Rc<RefCell<PhaseState>>,
+        dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
+        executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>
     ) -> Self {
-        let mut task_debds: HashMap<Phase, VecDeque<Task>> = HashMap::new();
-
-        task_debds.insert(Phase::InitPhase, VecDeque::new());
-        task_debds.insert(Phase::ShutdownPhase, VecDeque::new());
-        task_debds.insert(Phase::UpdatePhase, VecDeque::new());
-        task_debds.insert(Phase::RenderPhase, VecDeque::new());
-        task_debds.insert(Phase::ExternalEventsPhase, VecDeque::new());
-
         Self {  
             control_thread_data_bus: control_thread_data_bus,
-            task_debds: task_debds,
-            phase_state,
+            dynamic_shared_thread_state: dynamic_shared_thread_state,
+            executeur_thread_input_channel_sender: executeur_thread_input_channel_sender,
         }
     } 
 
     pub fn start(&mut self){
         let mut data_bus = self.control_thread_data_bus.borrow_mut();
 
-        for task in data_bus.drain_task_queue() {
-            let task_debd = self.task_debds.get_mut(&task.phase).unwrap();
+        let tasks: Vec<Task> = data_bus.drain_task_queue().collect();
 
-            task_debd.push_back(task);
+        let mut schedule: Vec<TaskChunk> = Vec::new(); 
+
+        for task in tasks {
+            let mut inserted = false;
+
+            for task_chunk in schedule.iter_mut() {
+                if task_chunk.try_insert_task(task) {
+                    inserted = true;
+                    break;
+                } 
+            }
+
+            if !inserted {
+                let mut new_task_chunk = TaskChunk::new();
+                new_task_chunk.try_insert_task(task);
+
+                schedule.push(new_task_chunk);
+            }
         }
-
-        // TODO: Time budget will be there
-        let current_phase = self.phase_state.borrow().get_current_phase();
-
-        let task_debd = self.task_debds.get_mut(&current_phase).unwrap();
         
+        let mut lock_dynamic_shared_thread_state = self
+            .dynamic_shared_thread_state
+            .lock()
+            .unwrap();
+
+        lock_dynamic_shared_thread_state.set_schedule(schedule.into_iter());
+        self.executeur_thread_input_channel_sender.send(ExecuteurThreadInputSignal::ScheduleReady);
     }
     
     

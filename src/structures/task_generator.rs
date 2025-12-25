@@ -20,6 +20,7 @@ use crate::{
     enums::{
         phase_enum::Phase,
         task_type_enum::TaskType,
+        task_priority_enum::TaskPriority,
         io_event_enum::IOEvent,
         winit_event_enum::WinitEvent,
     },
@@ -58,6 +59,7 @@ impl TaskGenerator {
                 let task = Task {
                     task_type: TaskType::Init,
                     phase: Phase::InitPhase,
+                    task_priority: TaskPriority::FirstPriority, 
                 };
 
                 tasks.push(task); 
@@ -66,6 +68,7 @@ impl TaskGenerator {
                 let task = Task {
                     task_type: TaskType::Shutdown,
                     phase: Phase::ShutdownPhase,
+                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 tasks.push(task);
@@ -74,11 +77,13 @@ impl TaskGenerator {
                 let task_1 = Task {
                     task_type: TaskType::LogicCalculation,
                     phase: Phase::UpdatePhase,
+                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 let task_2 = Task {
                     task_type: TaskType::PrepareRenderState,
                     phase: Phase::UpdatePhase,
+                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 tasks.push(task_1);
@@ -88,6 +93,7 @@ impl TaskGenerator {
                 let task = Task {
                     task_type: TaskType::DrawRenderState,
                     phase: Phase::RenderPhase,
+                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 tasks.push(task); 
@@ -111,6 +117,7 @@ impl TaskGenerator {
                                             let task = Task {
                                                 task_type: TaskType::Resize,
                                                 phase: Phase::ExternalEventsPhase,
+                                                task_priority: TaskPriority::FirstPriority,
                                             };
 
                                             tasks.push(task);

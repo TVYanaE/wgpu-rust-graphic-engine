@@ -6,3 +6,4 @@ pub mod material_manager;
 pub mod render_pipeline_manager;
 pub mod sampler_manager;
 pub mod texture_atlas_manager;
+pub mod time_manager;

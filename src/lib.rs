@@ -34,12 +34,16 @@ use crate::{
             render_thread::RenderThread,
             control_thread::ControlThread,
             io_thread::IOThread,
+            executeur_thread::ExecuteurThread,
+            ecs_thread::ECSThread,
         },
     },
     enums::{
         signals::{
             control_thread_signal_enums::ControlThreadInputSignal,
             io_thread_signal_enums::IOThreadInputSignal,
+            executeur_thread_signal_enums::ExecuteurThreadInputSignal,
+            ecs_thread_signal_enums::ECSThreadInputSignal,
         },
     },  
 };
@@ -51,6 +55,7 @@ struct App {
     render_thread: Option<RenderThread>,
     control_thread: Option<ControlThread>,
     io_thread: Option<IOThread>,
+    executeur_thread: Option<ExecuteurThread>,
 
     // Shared Thread States 
     static_shared_thread_state: Option<Arc<StaticSharedThreadState>>,
@@ -105,6 +110,16 @@ impl ApplicationHandler for App {
             io_thread_input_channel_receiver,
         ) = unbounded::<IOThreadInputSignal>();
 
+        let (
+            executeur_thread_input_channel_sender,
+            executeur_thread_input_channel_receiver
+        ) = unbounded::<ExecuteurThreadInputSignal>();
+
+        let (
+            ecs_thread_input_channel_sender,
+            ecs_thread_input_channel_receiver
+        ) = unbounded::<ECSThreadInputSignal>();
+        
         // Init exchange thread buffers and buses 
         let io_bus = Arc::new(Mutex::new(IOBus::new()));
 
@@ -120,21 +135,27 @@ impl ApplicationHandler for App {
         );
 
         // Init threads
-        let render_thead = pollster::block_on(RenderThread::new(window)); 
+        let render_thread = pollster::block_on(RenderThread::new(window)); 
         let io_thread = IOThread::start_thread(io_thread_input_channel_receiver, io_bus.clone()); 
         let control_thread = ControlThread::start_thread(
             control_thread_input_channel_receiver,
             io_bus.clone(),
             dynamic_shared_thread_state.clone(),
+            executeur_thread_input_channel_sender,
+        );
+        let executeur_thread = ExecuteurThread::start_thread(
+            executeur_thread_input_channel_receiver, 
+            dynamic_shared_thread_state.clone()
         );
 
         // Init static Shader Thread state 
-        let static_shared_thread_state = StaticSharedThreadState::new(render_thead.get_material_manager());
+        let static_shared_thread_state = StaticSharedThreadState::new(render_thread.get_material_manager());
 
         // Save into App
-        self.render_thread = Some(render_thead);
+        self.render_thread = Some(render_thread);
         self.control_thread = Some(control_thread);
         self.io_thread = Some(io_thread);
+        self.executeur_thread = Some(executeur_thread);
 
         self.static_shared_thread_state = Some(Arc::new(static_shared_thread_state));
         self.dynamic_shared_thread_state = Some(dynamic_shared_thread_state); 

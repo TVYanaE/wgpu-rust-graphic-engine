@@ -5,12 +5,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 use flume::{
-    Receiver,
+    Receiver, Sender,
 };
 use crate::{
     structures::{
         buses::{
-            control_thread_message_bus::ControlThreadMessagesBus,
             control_thread_data_bus::ControlThreadDataBus,
             io_bus::IOBus,
         },
@@ -29,6 +28,7 @@ use crate::{
     enums::{
         signals::{
             control_thread_signal_enums::ControlThreadInputSignal,
+            executeur_thread_signal_enums::ExecuteurThreadInputSignal,
         },
     },
 };
@@ -42,11 +42,9 @@ impl ControlThread {
         control_thread_input_channel_receiver: Receiver<ControlThreadInputSignal>,
         io_bus: Arc<Mutex<IOBus>>,
         dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
+        executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>,
     ) -> Self {
         let handle = thread::spawn(move ||{
-            let control_thread_message_bus = Rc::new(
-                RefCell::new(ControlThreadMessagesBus::new())
-            );
 
             let control_thread_data_bus = Rc::new(
                 RefCell::new(ControlThreadDataBus::new())
@@ -71,10 +69,14 @@ impl ControlThread {
             let task_generator = TaskGenerator::new(
                 control_thread_data_bus.clone(), 
                 phase_state,
-                dynamic_shared_thread_state,
+                dynamic_shared_thread_state.clone(),
             ); 
 
-            let mut scheduler = Scheduler::new(control_thread_data_bus); 
+            let mut scheduler = Scheduler::new(
+                control_thread_data_bus,
+                dynamic_shared_thread_state,
+                executeur_thread_input_channel_sender
+            ); 
             
             loop {
                 control_thread_signal_storage.borrow_mut().start().unwrap();

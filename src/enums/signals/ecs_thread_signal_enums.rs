@@ -1,6 +1,6 @@
 
 
-pub enum ECSThreadSignal {
+pub enum ECSThreadInputSignal {
     Init,
     Shutdown, 
 }
