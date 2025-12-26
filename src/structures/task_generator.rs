@@ -2,7 +2,6 @@ use std::{
     cell::RefCell,
     rc::Rc,
     sync::{Arc, Mutex},
-    time::Duration,
 };
 use winit::{
     event::WindowEvent,
@@ -24,7 +23,6 @@ use crate::{
         phase_enum::Phase,
         task_type_enum::TaskType,
         time_cost_type_enum::TimeCostType,
-        task_priority_enum::TaskPriority,
         io_event_enum::IOEvent,
         winit_event_enum::WinitEvent,
     },
@@ -74,7 +72,6 @@ impl TaskGenerator {
                         time_cost: task_time_cost, 
                     },
                     phase: Phase::InitPhase,
-                    task_priority: TaskPriority::FirstPriority, 
                 };
 
                 tasks.push(task); 
@@ -89,7 +86,6 @@ impl TaskGenerator {
                         time_cost: task_time_cost, 
                     },
                     phase: Phase::ShutdownPhase,
-                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 tasks.push(task);
@@ -105,7 +101,6 @@ impl TaskGenerator {
                         time_cost: task1_time_cost, 
                     },
                     phase: Phase::UpdatePhase,
-                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 let task2 = Task {
@@ -115,7 +110,6 @@ impl TaskGenerator {
                         time_cost:task2_time_cost, 
                     },
                     phase: Phase::UpdatePhase,
-                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 tasks.push(task1);
@@ -131,7 +125,6 @@ impl TaskGenerator {
                         time_cost: task_time_cost, 
                     },
                     phase: Phase::RenderPhase,
-                    task_priority: TaskPriority::FirstPriority,
                 };
 
                 tasks.push(task); 
@@ -161,7 +154,6 @@ impl TaskGenerator {
                                                     time_cost: task_time_cost, 
                                                 },
                                                 phase: Phase::ExternalEventsPhase,
-                                                task_priority: TaskPriority::FirstPriority,
                                             };
 
                                             tasks.push(task);

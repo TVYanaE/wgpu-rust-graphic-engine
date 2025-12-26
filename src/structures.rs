@@ -15,6 +15,7 @@ pub mod batcher;
 pub mod buffers_layouts;
 pub mod camera;
 pub mod control_thread_signal_storage;
+pub mod ecs_thread_signal_storage;
 pub mod estimator;
 pub mod logical_render_batch;
 pub mod material;

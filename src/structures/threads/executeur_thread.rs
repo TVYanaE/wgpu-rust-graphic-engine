@@ -34,6 +34,7 @@ use crate::{
         signals::{
             executeur_thread_signal_enums::ExecuteurThreadInputSignal,
             ecs_thread_signal_enums::ECSThreadInputSignal,
+            render_thread_signal_enums::RenderThreadInputSignal,
         },
     },
 };
@@ -49,6 +50,7 @@ impl ExecuteurThread {
         executeur_thread_input_channel_receiver: Receiver<ExecuteurThreadInputSignal>,
         dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
         ecs_thread_input_channel_sender: Sender<ECSThreadInputSignal>,
+        render_thread_input_channel_sender: Sender<RenderThreadInputSignal>,
     ) -> Self {
         let handle = thread::spawn(move||{
             let executeur_thread_message_bus = Rc::new(
@@ -85,7 +87,9 @@ impl ExecuteurThread {
 
             let global_executeur = GlobalExecuteur::new(
                 executeur_thread_message_bus, 
-                executeur_thread_data_bus
+                executeur_thread_data_bus,
+                ecs_thread_input_channel_sender,
+                render_thread_input_channel_sender,
             );
 
             loop {

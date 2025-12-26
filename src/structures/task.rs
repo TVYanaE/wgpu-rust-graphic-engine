@@ -8,7 +8,6 @@ use crate::{
     enums::{
         task_type_enum::TaskType,
         phase_enum::Phase,
-        task_priority_enum::TaskPriority,
     },
 };
 
@@ -16,6 +15,5 @@ use crate::{
 pub struct Task {
     pub task_type: TaskType,
     pub phase: Phase,  
-    pub task_priority: TaskPriority,
     pub task_time_cost: TaskTimeCost,
 }

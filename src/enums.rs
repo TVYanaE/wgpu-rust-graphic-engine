@@ -4,6 +4,7 @@ pub mod signals;
 // modules
 pub mod bind_group_layout_name_enum;
 pub mod bind_group_name_enum;
+pub mod ecs_thread_message_enums;
 pub mod errors;
 pub mod execute_thread_message_enums;
 pub mod io_event_enum;

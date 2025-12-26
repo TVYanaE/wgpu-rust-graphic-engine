@@ -17,25 +17,48 @@ use winit::{
     window::{Window, WindowId},
 };
 use crate::{
-    enums::signals::{
-            control_thread_signal_enums::ControlThreadInputSignal, ecs_thread_signal_enums::ECSThreadInputSignal, executeur_thread_signal_enums::ExecuteurThreadInputSignal, io_thread_signal_enums::IOThreadInputSignal
-        }, structures::{
-        buses::io_bus::IOBus, recorders::winit_event_recorder::WinitEventRecorder, states::{
-            app_state::AppState, dynamic_shared_thread_state::DynamicSharedThreadState, static_shared_thread_state::StaticSharedThreadState
-        }, threads::{
-            control_thread::ControlThread, executeur_thread::ExecuteurThread, io_thread::IOThread, render_thread::RenderThread
-        }, time_menu::{self, TimeMenu}, timer::Timer
+    enums::{
+        signals::{
+            control_thread_signal_enums::ControlThreadInputSignal, 
+            ecs_thread_signal_enums::ECSThreadInputSignal,
+            executeur_thread_signal_enums::ExecuteurThreadInputSignal,
+            io_thread_signal_enums::IOThreadInputSignal,
+            render_thread_signal_enums::RenderThreadInputSignal,
+        },
+    },
+    structures::{
+        buses::{
+            io_bus::IOBus
+        }, 
+        recorders::{
+            winit_event_recorder::WinitEventRecorder,
+        }, 
+        states::{
+            dynamic_shared_thread_state::DynamicSharedThreadState, 
+            static_shared_thread_state::StaticSharedThreadState
+        }, 
+        threads::{
+            control_thread::ControlThread, 
+            executeur_thread::ExecuteurThread, 
+            io_thread::IOThread, 
+            render_thread::RenderThread,
+            ecs_thread::ECSThread,
+        }, 
+        time_menu::{
+            TimeMenu
+        }, 
+        timer::Timer
     }  
 };
 
 #[derive(Default)]
 struct App {
-    app_state: Option<AppState>,
     // Threads 
     render_thread: Option<RenderThread>,
     control_thread: Option<ControlThread>,
     io_thread: Option<IOThread>,
     executeur_thread: Option<ExecuteurThread>,
+    ecs_thread: Option<ECSThread>,
 
     // Shared Thread States 
     static_shared_thread_state: Option<Arc<StaticSharedThreadState>>,
@@ -100,7 +123,12 @@ impl ApplicationHandler for App {
             ecs_thread_input_channel_sender,
             ecs_thread_input_channel_receiver
         ) = unbounded::<ECSThreadInputSignal>();
-        
+       
+        let (
+            render_thread_input_channel_sender,
+            render_thread_input_channel_receiver
+        ) = unbounded::<RenderThreadInputSignal>();
+
         // Init exchange thread buffers and buses 
         let io_bus = Arc::new(Mutex::new(IOBus::new()));
 
@@ -134,8 +162,10 @@ impl ApplicationHandler for App {
         let executeur_thread = ExecuteurThread::start_thread(
             executeur_thread_input_channel_receiver, 
             dynamic_shared_thread_state.clone(),
-            ecs_thread_input_channel_sender.clone()
+            ecs_thread_input_channel_sender.clone(),
+            render_thread_input_channel_sender,
         );
+        let ecs_thread = ECSThread::start_thread(ecs_thread_input_channel_receiver);
 
         // Init static Shader Thread state 
         let static_shared_thread_state = StaticSharedThreadState::new(render_thread.get_material_manager());
@@ -145,6 +175,7 @@ impl ApplicationHandler for App {
         self.control_thread = Some(control_thread);
         self.io_thread = Some(io_thread);
         self.executeur_thread = Some(executeur_thread);
+        self.ecs_thread = Some(ecs_thread);
 
         self.static_shared_thread_state = Some(Arc::new(static_shared_thread_state));
         self.dynamic_shared_thread_state = Some(dynamic_shared_thread_state); 
