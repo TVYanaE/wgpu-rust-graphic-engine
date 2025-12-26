@@ -4,7 +4,6 @@ use std::{
 use crate::{
     structures::{
         time_budget::TimeBudget,
-        time_menu::TimeMenu,
     },
     enums::{
         time_budget_type_enum::TimeBudgetType,
@@ -12,15 +11,12 @@ use crate::{
 };
 
 pub struct TimeState {
-    pub time_menu: TimeMenu,
     pub render_time_budget: TimeBudget,
     pub logic_time_budget: TimeBudget,
 }
 
 impl Default for TimeState {
     fn default() -> Self {
-        let time_menu = TimeMenu::new();
-
         let render_time_budget = TimeBudget::new(
             TimeBudgetType::RenderTimeBudget, 
             Duration::from_millis(17), 
@@ -34,7 +30,6 @@ impl Default for TimeState {
         );
         
         Self { 
-            time_menu: time_menu, 
             render_time_budget: render_time_budget, 
             logic_time_budget: logic_time_budget, 
         } 

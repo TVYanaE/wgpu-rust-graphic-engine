@@ -17,35 +17,15 @@ use winit::{
     window::{Window, WindowId},
 };
 use crate::{
-    structures::{
-        buses::{
-            io_bus::IOBus,
-        },
-        states::{
-            app_state::AppState,
-            static_shared_thread_state::StaticSharedThreadState,
-            dynamic_shared_thread_state::DynamicSharedThreadState,
-        },
-        timer::Timer, 
-        recorders::{
-            winit_event_recorder::WinitEventRecorder,
-        },
-        threads::{
-            render_thread::RenderThread,
-            control_thread::ControlThread,
-            io_thread::IOThread,
-            executeur_thread::ExecuteurThread,
-            ecs_thread::ECSThread,
-        },
-    },
-    enums::{
-        signals::{
-            control_thread_signal_enums::ControlThreadInputSignal,
-            io_thread_signal_enums::IOThreadInputSignal,
-            executeur_thread_signal_enums::ExecuteurThreadInputSignal,
-            ecs_thread_signal_enums::ECSThreadInputSignal,
-        },
-    },  
+    enums::signals::{
+            control_thread_signal_enums::ControlThreadInputSignal, ecs_thread_signal_enums::ECSThreadInputSignal, executeur_thread_signal_enums::ExecuteurThreadInputSignal, io_thread_signal_enums::IOThreadInputSignal
+        }, structures::{
+        buses::io_bus::IOBus, recorders::winit_event_recorder::WinitEventRecorder, states::{
+            app_state::AppState, dynamic_shared_thread_state::DynamicSharedThreadState, static_shared_thread_state::StaticSharedThreadState
+        }, threads::{
+            control_thread::ControlThread, executeur_thread::ExecuteurThread, io_thread::IOThread, render_thread::RenderThread
+        }, time_menu::{self, TimeMenu}, timer::Timer
+    }  
 };
 
 #[derive(Default)]
@@ -60,6 +40,7 @@ struct App {
     // Shared Thread States 
     static_shared_thread_state: Option<Arc<StaticSharedThreadState>>,
     dynamic_shared_thread_state: Option<Arc<Mutex<DynamicSharedThreadState>>>,
+    time_menu: Option<Arc<Mutex<TimeMenu>>>,
 
     // Buses 
     io_bus: Option<Arc<Mutex<IOBus>>>,
@@ -127,12 +108,18 @@ impl ApplicationHandler for App {
         let winit_event_recorder = WinitEventRecorder::new(io_thread_input_channel_sender.clone()); 
 
         // Init Timer 
-        let timer = Timer::new(control_thread_input_channel_sender.clone()); 
+        let timer = Timer::new(
+            control_thread_input_channel_sender.clone(),
+            executeur_thread_input_channel_sender.clone(),
+        ); 
 
         // Init dynamic shader thread state 
         let dynamic_shared_thread_state = Arc::new(
             Mutex::new(DynamicSharedThreadState::new())
         );
+
+        // Init time menu 
+        let time_menu = Arc::new(Mutex::new(TimeMenu::new()));
 
         // Init threads
         let render_thread = pollster::block_on(RenderThread::new(window)); 
@@ -142,10 +129,12 @@ impl ApplicationHandler for App {
             io_bus.clone(),
             dynamic_shared_thread_state.clone(),
             executeur_thread_input_channel_sender,
+            time_menu.clone(),
         );
         let executeur_thread = ExecuteurThread::start_thread(
             executeur_thread_input_channel_receiver, 
-            dynamic_shared_thread_state.clone()
+            dynamic_shared_thread_state.clone(),
+            ecs_thread_input_channel_sender.clone()
         );
 
         // Init static Shader Thread state 
@@ -159,6 +148,7 @@ impl ApplicationHandler for App {
 
         self.static_shared_thread_state = Some(Arc::new(static_shared_thread_state));
         self.dynamic_shared_thread_state = Some(dynamic_shared_thread_state); 
+        self.time_menu = Some(time_menu);
 
         self.io_bus = Some(io_bus);
         

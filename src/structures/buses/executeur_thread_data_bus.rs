@@ -1,42 +1,40 @@
-use std::{
-    collections::{VecDeque},
-};
-
 use crate::{
     structures::{
-        task::Task,
+        task_chunk::TaskChunk,
     },
 };
 
 pub struct ExecuteurThreadDataBus {
-    schedule: VecDeque<Task>
+    task_chunks: Vec<TaskChunk>,
+    job_list: Vec<TaskChunk>,
 }
 
 impl ExecuteurThreadDataBus {
     pub fn new() -> Self {
 
         Self { 
-            schedule: VecDeque::new(),
+            task_chunks: Vec::new(),
+            job_list: Vec::new(),
         }
     }
-
-    pub fn add_task_to_bus(&mut self, task: Task) {
-        self.schedule.push_back(task);
+    
+    pub fn push_task_chunk(&mut self, task_chunk: TaskChunk) {
+        self.task_chunks.push(task_chunk);
+    }
+    
+    pub fn push_task_chunks(&mut self, task_chunks: impl Iterator<Item = TaskChunk>) {
+        self.task_chunks.extend(task_chunks);
     }
 
-    pub fn add_tasks_to_bus(&mut self, tasks: impl Iterator<Item = Task>) {
-        self.schedule.extend(tasks);
+    pub fn push_job_list(&mut self, job_list: impl Iterator<Item = TaskChunk>) {
+        self.job_list.extend(job_list);
     }
 
-    pub fn get_latest_task(&mut self) -> Option<Task> {
-        self.schedule.pop_front()
+    pub fn drain_task_chunk_buffer(&mut self) -> impl Iterator<Item = TaskChunk> {
+        self.task_chunks.drain(..)
     }
 
-    pub fn get_oldest_task(&mut self) -> Option<Task> {
-        self.schedule.pop_back()
-    }
-
-    pub fn drain_task_buffer(&mut self) -> impl Iterator<Item = Task> {
-        self.schedule.drain(..)
-    }
+    pub fn drain_job_list(&mut self) -> impl Iterator<Item = TaskChunk> {
+        self.job_list.drain(..)
+    } 
 }

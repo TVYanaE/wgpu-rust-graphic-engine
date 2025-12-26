@@ -38,15 +38,18 @@ impl TimeBudget {
         } 
     }
 
-    pub fn get_current_budget(&self) -> Duration {
-        self.current_budget
+    pub fn get_avaiable_budget(&mut self) -> Option<Duration> {
+        if self.avaiable_budget == Duration::ZERO {
+            return None;
+        }
+        else {
+            let avaiable_budget = self.avaiable_budget;
+            self.avaiable_budget = Duration::ZERO;
+            return Some(avaiable_budget);
+        }
     }
 
-    pub fn get_avaiable_budget(&self) -> Duration {
-        self.avaiable_budget
-    }
-
-    pub fn refresh_abaiable_budget(&mut self) {
+    pub fn refresh_avaiable_budget(&mut self) {
         self.avaiable_budget = self.current_budget;
     }
 }

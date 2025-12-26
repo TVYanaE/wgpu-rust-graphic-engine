@@ -5,7 +5,7 @@ pub mod signals;
 pub mod bind_group_layout_name_enum;
 pub mod bind_group_name_enum;
 pub mod errors;
-pub mod execute_thread_message_enum;
+pub mod execute_thread_message_enums;
 pub mod io_event_enum;
 pub mod material_name_enum;
 pub mod phase_enum;
@@ -15,4 +15,6 @@ pub mod shader_module_name_enum;
 pub mod task_priority_enum;
 pub mod task_type_enum;
 pub mod time_budget_type_enum;
+pub mod time_cost_type_enum;
 pub mod winit_event_enum;
+

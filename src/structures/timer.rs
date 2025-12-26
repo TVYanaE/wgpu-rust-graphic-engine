@@ -4,6 +4,7 @@ use crate::{
     enums::{
         signals::{
             control_thread_signal_enums::ControlThreadInputSignal,
+            executeur_thread_signal_enums::ExecuteurThreadInputSignal,
         },
     },
 };
@@ -16,11 +17,15 @@ pub struct Timer {
     frame_time_accumulator: Duration,
     logic_time_accumulator: Duration,
     control_thread_input_channel_sender: Sender<ControlThreadInputSignal>,
+    executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>,
 }
 
 
 impl Timer {
-    pub fn new(control_thread_input_channel_sender: Sender<ControlThreadInputSignal>) -> Self {
+    pub fn new(
+        control_thread_input_channel_sender: Sender<ControlThreadInputSignal>,
+        executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>,
+    ) -> Self {
         Self { 
             last_time_check: Instant::now(), 
             delta: Duration::ZERO, 
@@ -28,7 +33,8 @@ impl Timer {
             logic_threshold: Duration::from_millis(34),
             logic_time_accumulator: Duration::ZERO,
             frame_time_accumulator: Duration::ZERO,
-            control_thread_input_channel_sender
+            control_thread_input_channel_sender,
+            executeur_thread_input_channel_sender
         }
     }
 
@@ -45,6 +51,7 @@ impl Timer {
         if self.logic_time_accumulator >= self.logic_threshold {
             self.logic_time_accumulator -= self.logic_threshold;
             self.control_thread_input_channel_sender.send(ControlThreadInputSignal::LogicStart);
+            self.executeur_thread_input_channel_sender.send(ExecuteurThreadInputSignal::LogicStart);
         }
         else {
             return;
@@ -55,6 +62,7 @@ impl Timer {
         if self.frame_time_accumulator >= self.frame_threshold {
             self.frame_time_accumulator = Duration::ZERO;
             self.control_thread_input_channel_sender.send(ControlThreadInputSignal::FrameStart);
+            self.executeur_thread_input_channel_sender.send(ExecuteurThreadInputSignal::FrameStart);
         }
         else {
             return;

@@ -10,7 +10,10 @@ use crate::{
         signals::{
             executeur_thread_signal_enums::ExecuteurThreadInputSignal,
         },
-        execute_thread_message_enum::ExecuteThreadMessage,
+        execute_thread_message_enums::{
+            ExecuteurThreadTaskControllerMessage,
+            ExecuteurThreadTimeManagerMessage,
+        },
     },
     structures::{
         buses::{
@@ -46,7 +49,19 @@ impl ExecuteurThreadSignalStorage {
                             self
                             .executeur_thread_message_bus
                             .borrow_mut()
-                            .push_message_to_bus(ExecuteThreadMessage::ScheduleReady);
+                            .push_task_controller_message_to_bus(ExecuteurThreadTaskControllerMessage::ScheduleReady);
+                        },
+                        ExecuteurThreadInputSignal::LogicStart => {
+                            self
+                            .executeur_thread_message_bus
+                            .borrow_mut()
+                            .push_time_manager_message_to_bus(ExecuteurThreadTimeManagerMessage::LogicStart);
+                        },
+                        ExecuteurThreadInputSignal::FrameStart => {
+                            self
+                            .executeur_thread_message_bus
+                            .borrow_mut()
+                            .push_time_manager_message_to_bus(ExecuteurThreadTimeManagerMessage::LogicStart);
                         },
                     }
                 },

@@ -1,87 +1,131 @@
 use std::{
-    cell::RefCell,
     rc::Rc,
-    sync::{Arc, Mutex},
+    cell::RefCell,
     collections::{VecDeque},
+    time::Duration,
 };
 use crate::{
     structures::{
         buses::{
+            executeur_thread_data_bus::ExecuteurThreadDataBus,
             executeur_thread_message_bus::ExecuteurThreadMessageBus,
         },
         states::{
-            dynamic_shared_thread_state::DynamicSharedThreadState,
+            time_state::TimeState,
         },
         task_chunk::TaskChunk,
-        task::Task,
     },
     enums::{
-        execute_thread_message_enum::ExecuteThreadMessage,
-        task_priority_enum::TaskPriority,
+        execute_thread_message_enums::{
+            ExecuteurThreadTimeControllerMessage,
+            ExecuteurThreadGlobalExecuteurMessage,
+        },
+        time_cost_type_enum::TimeCostType,
     },
 };
 
 pub struct TimeController {
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
-    dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
-    first_priority_task_debt: VecDeque<Task>, 
-    second_priority_task_debt: VecDeque<Task>,
+    executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
+    time_state: Rc<RefCell<TimeState>>,
+    task_chunk_debt: VecDeque<TaskChunk>,
+    avaiable_render_time_budget: Duration,
+    avaiable_logic_time_budget: Duration,
 }
 
 impl TimeController {
     pub fn new(
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
-        dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
+        executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
+        time_state: Rc<RefCell<TimeState>>,
+        
     ) -> Self {
         Self { 
-            executeur_thread_message_bus: executeur_thread_message_bus,
-            dynamic_shared_thread_state: dynamic_shared_thread_state,
-            first_priority_task_debt: VecDeque::new(),
-            second_priority_task_debt: VecDeque::new(),
+            executeur_thread_message_bus: executeur_thread_message_bus, 
+            executeur_thread_data_bus: executeur_thread_data_bus,
+            time_state: time_state,
+            task_chunk_debt: VecDeque::new(),
+            avaiable_render_time_budget: Duration::ZERO,
+            avaiable_logic_time_budget: Duration::ZERO,
         }
     }
 
     pub fn start(&mut self) {
-        let messages: Vec<ExecuteThreadMessage> = self
+        let mut task_chunks_ready = false;  
+
+        for message in self
             .executeur_thread_message_bus
             .borrow_mut()
-            .drain_message_buffer()
-            .collect();
-
-        let mut task_chunks: Vec<TaskChunk> = Vec::new();
-
-        let mut dynamic_shared_thread_state_lock = self
-            .dynamic_shared_thread_state
-            .lock()
-            .unwrap();
-
-        let time_menu = dynamic_shared_thread_state_lock.time_menu.get_time_menu();
-
-        for message in messages {
+            .drain_time_controller_message_buffer() {
             match message {
-                ExecuteThreadMessage::ScheduleReady => {
-                    task_chunks.extend(dynamic_shared_thread_state_lock.drain_schedule());
+                ExecuteurThreadTimeControllerMessage::TaskChunksReady => {
+                    task_chunks_ready = true;
                 },
             }
         }
 
-        for mut task_chunk in task_chunks {
-            for task in task_chunk.drain_chunk() {
-                match task.task_priority {
-                    TaskPriority::FirstPriority => {
-                        self.first_priority_task_debt.push_back(task);
-                    },
-                    TaskPriority::SecondPriority => {
-                        self.second_priority_task_debt.push_back(task);
-                    },
-                }
-            } 
+        if !task_chunks_ready {
+            return;
         }
 
-        
-        
-         
-    }
+        for task_chunk in self.executeur_thread_data_bus.borrow_mut().drain_task_chunk_buffer() {
+            self.task_chunk_debt.push_back(task_chunk);
+        }
 
-    
+        if let Some(new_render_time_budget) = self.time_state.borrow_mut().render_time_budget.get_avaiable_budget() {
+            self.avaiable_render_time_budget = new_render_time_budget;
+        }
+
+        if let Some(new_logic_time_budget) = self.time_state.borrow_mut().logic_time_budget.get_avaiable_budget() {
+            self.avaiable_logic_time_budget = new_logic_time_budget;
+        }
+        
+        let mut job_list = Vec::new();
+
+        let mut debt_over = true;
+        let mut reserv_task_chunk = TaskChunk::new(); 
+
+        while let Some(task_chunk) = self.task_chunk_debt.pop_front() {
+            let task_chunk_time_cost = task_chunk.get_time_cost().unwrap();
+
+            match task_chunk_time_cost.time_cost_type {
+                TimeCostType::LogicTimeCost => {
+                    if task_chunk_time_cost.time_cost < self.avaiable_logic_time_budget {
+                        job_list.push(task_chunk);
+                        self.avaiable_logic_time_budget -= task_chunk_time_cost.time_cost;
+                    }
+                    else {
+                        reserv_task_chunk = task_chunk;
+                        debt_over = false;
+                        break;
+                    }
+                },
+                TimeCostType::RenderTimeCost => {
+                    if task_chunk_time_cost.time_cost < self.avaiable_render_time_budget {
+                        job_list.push(task_chunk);
+                        self.avaiable_logic_time_budget -= task_chunk_time_cost.time_cost;
+                    }
+                    else {
+                        reserv_task_chunk = task_chunk;
+                        debt_over = false;
+                        break;
+                    }
+                },
+            }
+        }
+
+        if !debt_over {
+            self.task_chunk_debt.push_front(reserv_task_chunk);
+        }
+         
+        self
+        .executeur_thread_message_bus
+        .borrow_mut()
+        .push_global_executeur_message_to_bus(ExecuteurThreadGlobalExecuteurMessage::JobListReady); 
+        
+        self
+        .executeur_thread_data_bus
+        .borrow_mut()
+        .push_job_list(job_list.into_iter());
+    }
 }

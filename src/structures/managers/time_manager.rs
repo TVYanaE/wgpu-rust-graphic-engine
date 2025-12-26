@@ -12,6 +12,11 @@ use crate::{
             executeur_thread_message_bus::ExecuteurThreadMessageBus,
         },
     },
+    enums::{
+        execute_thread_message_enums::{
+            ExecuteurThreadTimeManagerMessage
+        },
+    },
 };
 
 
@@ -30,6 +35,21 @@ impl TimeManager {
             executeur_thread_message_bus: executeur_thread_message_bus,
         } 
     }
-    
+   
+    pub fn start(&self) { 
+        for message in self
+            .executeur_thread_message_bus
+            .borrow_mut()
+            .drain_time_manager_message_buffer() {
+            match message {
+                ExecuteurThreadTimeManagerMessage::LogicStart => {
+                    self.time_state.borrow_mut().logic_time_budget.refresh_avaiable_budget();
+                },
+                ExecuteurThreadTimeManagerMessage::FrameStart => {
+                    self.time_state.borrow_mut().render_time_budget.refresh_avaiable_budget();
+                },
+            }
+        }
+    }
     
 }

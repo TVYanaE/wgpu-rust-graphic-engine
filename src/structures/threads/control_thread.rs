@@ -24,6 +24,7 @@ use crate::{
         control_thread_signal_storage::ControlThreadSignalStorage,
         task_generator::TaskGenerator,
         scheduler::Scheduler,
+        time_menu::TimeMenu,
     },
     enums::{
         signals::{
@@ -43,6 +44,7 @@ impl ControlThread {
         io_bus: Arc<Mutex<IOBus>>,
         dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
         executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>,
+        time_menu: Arc<Mutex<TimeMenu>>,
     ) -> Self {
         let handle = thread::spawn(move ||{
 
@@ -70,6 +72,7 @@ impl ControlThread {
                 control_thread_data_bus.clone(), 
                 phase_state,
                 dynamic_shared_thread_state.clone(),
+                time_menu
             ); 
 
             let mut scheduler = Scheduler::new(
