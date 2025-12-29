@@ -7,9 +7,11 @@ use flume::{
 };
 use crate::{
     structures::{
-        buses::{
-            executeur_thread_message_bus::ExecuteurThreadMessageBus,
-            executeur_thread_data_bus::ExecuteurThreadDataBus,
+        executeur_thread::{
+            buses::{
+                executeur_thread_message_bus::ExecuteurThreadMessageBus,
+                executeur_thread_data_bus::ExecuteurThreadDataBus,
+            },
         },
     },
     enums::{
@@ -24,14 +26,14 @@ use crate::{
     },
 };
 
-pub struct GlobalExecuteur {
+pub struct ExecuteurThreadGlobalExecuteur {
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
     executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
     ecs_thread_input_channel_sender: Sender<ECSThreadInputSignal>,
     render_thread_input_channel_sender: Sender<RenderThreadInputSignal>,
 }
 
-impl GlobalExecuteur {
+impl ExecuteurThreadGlobalExecuteur {
     pub fn new(
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
         executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
@@ -69,15 +71,7 @@ impl GlobalExecuteur {
             .borrow_mut()
             .drain_job_list() {
             for task in task_chunk.drain_chunk() {
-                match task.task_type {
-                    TaskType::Init => {
-                        self.ecs_thread_input_channel_sender.send(ECSThreadInputSignal::Init);
-                        self.render_thread_input_channel_sender.send(RenderThreadInputSignal::Init);
-                    },
-                    TaskType::Shutdown => {
-                        self.ecs_thread_input_channel_sender.send(ECSThreadInputSignal::Shutdown);
-                        self.render_thread_input_channel_sender.send(RenderThreadInputSignal::Shutdown);
-                    },
+                match task.task_type {                    
                     TaskType::Resize => {
                         self.ecs_thread_input_channel_sender.send(ECSThreadInputSignal::Resize);
                         self.render_thread_input_channel_sender.send(RenderThreadInputSignal::Resize);

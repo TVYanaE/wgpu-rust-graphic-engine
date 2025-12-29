@@ -3,13 +3,15 @@ use std::{
     cell::RefCell,
 };
 
-use crate::{ 
+use crate::{
     structures::{
-        states::{
-            time_state::TimeState,
-        },
-        buses::{
-            executeur_thread_message_bus::ExecuteurThreadMessageBus,
+        executeur_thread::{
+            states::{
+                executeur_thread_time_state::ExecuteurThreadTimeState,
+            },
+            buses::{
+                executeur_thread_message_bus::ExecuteurThreadMessageBus,
+            },     
         },
     },
     enums::{
@@ -20,18 +22,18 @@ use crate::{
 };
 
 
-pub struct TimeManager {
-    time_state: Rc<RefCell<TimeState>>,
+pub struct ExecuteurThreadTimeManager {
+    executeur_time_state: Rc<RefCell<ExecuteurThreadTimeState>>,
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
 }
 
-impl TimeManager {
+impl ExecuteurThreadTimeManager {
     pub fn new(
-        time_state: Rc<RefCell<TimeState>>,
+        executeur_thread_time_state: Rc<RefCell<ExecuteurThreadTimeState>>,
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>
     ) -> Self {
         Self { 
-            time_state: time_state,
+            executeur_time_state: executeur_thread_time_state,
             executeur_thread_message_bus: executeur_thread_message_bus,
         } 
     }
@@ -43,10 +45,10 @@ impl TimeManager {
             .drain_time_manager_message_buffer() {
             match message {
                 ExecuteurThreadTimeManagerMessage::LogicStart => {
-                    self.time_state.borrow_mut().logic_time_budget.refresh_avaiable_budget();
+                    self.executeur_time_state.borrow_mut().logic_time_budget.refresh_avaiable_budget();
                 },
                 ExecuteurThreadTimeManagerMessage::FrameStart => {
-                    self.time_state.borrow_mut().render_time_budget.refresh_avaiable_budget();
+                    self.executeur_time_state.borrow_mut().render_time_budget.refresh_avaiable_budget();
                 },
             }
         }

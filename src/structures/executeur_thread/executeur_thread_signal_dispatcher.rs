@@ -6,6 +6,13 @@ use flume::{
     Receiver, TryRecvError,
 };
 use crate::{
+    structures::{
+        executeur_thread::{
+            buses::{
+                executeur_thread_message_bus::ExecuteurThreadMessageBus,
+            },
+        },
+    },
     enums::{
         signals::{
             executeur_thread_signal_enums::ExecuteurThreadInputSignal,
@@ -15,20 +22,16 @@ use crate::{
             ExecuteurThreadTimeManagerMessage,
         },
     },
-    structures::{
-        buses::{
-            executeur_thread_message_bus::ExecuteurThreadMessageBus,
-        },
-    },
+    
 };
 
 
-pub struct ExecuteurThreadSignalStorage {
+pub struct ExecuteurThreadSignalDispatcher {
     executeur_thread_input_channel_receiver: Receiver<ExecuteurThreadInputSignal>,
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
 }
 
-impl ExecuteurThreadSignalStorage {
+impl ExecuteurThreadSignalDispatcher {
     pub fn new(
         executeur_thread_input_channel_receiver: Receiver<ExecuteurThreadInputSignal>,
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
@@ -40,7 +43,7 @@ impl ExecuteurThreadSignalStorage {
         }
     }
 
-    pub fn start(&self ) {
+    pub fn start(&self) {
         loop {
             match self.executeur_thread_input_channel_receiver.try_recv() {
                 Ok(executeur_thread_input_signal) => {

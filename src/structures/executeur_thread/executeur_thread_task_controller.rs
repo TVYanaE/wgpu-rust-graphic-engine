@@ -5,14 +5,20 @@ use std::{
 };
 use crate::{
     structures::{
-        buses::{
-            executeur_thread_message_bus::ExecuteurThreadMessageBus,
-            executeur_thread_data_bus::ExecuteurThreadDataBus,
+        executeur_thread::{
+            buses::{
+                executeur_thread_message_bus::ExecuteurThreadMessageBus,
+                executeur_thread_data_bus::ExecuteurThreadDataBus,
+            },
         },
-        states::{
-            dynamic_shared_thread_state::DynamicSharedThreadState,
-        },
-        task_chunk::TaskChunk,
+        main_thread::{
+            states::{
+                dynamic_shared_thread_state::DynamicSharedThreadState,
+            },
+        }, 
+        common_structures::{
+            task_chunk::TaskChunk
+        }, 
     },
     enums::{
         execute_thread_message_enums::{
@@ -22,13 +28,13 @@ use crate::{
     },
 };
 
-pub struct TaskController {
+pub struct ExecuteurThreadTaskController {
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
     executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
     dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
 }
 
-impl TaskController {
+impl ExecuteurThreadTaskController {
     pub fn new(
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
         executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
@@ -41,7 +47,7 @@ impl TaskController {
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
         let mut schedule_ready = false;
 
         for message in self

@@ -6,7 +6,7 @@ use crate::{
     enums::{
         scene_type_enum::SceneType,
         phase_enum::Phase,
-        game_event_enum::GameEvent,
+        event_enums::GameEvent,
     },
 };
 

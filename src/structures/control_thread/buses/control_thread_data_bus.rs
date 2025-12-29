@@ -2,16 +2,22 @@ use std::{
     collections::VecDeque,
 };
 use crate::{
-    enums::{
-        io_event_enum::IOEvent,
-    },  
     structures::{
-        task::Task,
+        common_structures::{
+            task::Task,
+        },
     },
+    enums::{
+        event_enums::{
+            IOEvent,
+            Event,
+        }, 
+    },   
 };
 
 pub struct ControlThreadDataBus {
     task_queue: VecDeque<Task>,
+    event_buffer: Vec<Event>,
     io_event_queue: VecDeque<IOEvent>
 }
 
@@ -20,6 +26,7 @@ impl ControlThreadDataBus {
     pub fn new() -> Self {
         Self { 
             task_queue: VecDeque::new(),
+            event_buffer: Vec::new(),
             io_event_queue: VecDeque::new() 
         }
     }
@@ -62,5 +69,17 @@ impl ControlThreadDataBus {
 
     pub fn get_oldest_task(&mut self) -> Option<Task> {
         self.task_queue.pop_back()
+    }
+
+    pub fn push_event(&mut self, event: Event) {
+        self.event_buffer.push(event);
+    }
+
+    pub fn push_events(&mut self, events: impl Iterator<Item = Event>) {
+        self.event_buffer.extend(events);
+    }
+
+    pub fn drain_event_buffer(&mut self) -> impl Iterator<Item = Event> {
+        self.event_buffer.drain(..)
     }
 }

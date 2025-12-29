@@ -6,8 +6,10 @@ use crate::{
         task_type_enum::TaskType,
     },
     structures::{
-        task::Task,
-        task_chunk_time_cost::TaskChunkTimeCost,
+        common_structures::{
+            task::Task,
+            task_chunk_time_cost::TaskChunkTimeCost,
+        },
     },
 };
 

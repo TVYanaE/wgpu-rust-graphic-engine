@@ -9,6 +9,9 @@ use flume::{
 };
 use crate::{
     structures::{
+        common_structures::{
+            time_menu::TimeMenu,
+        },
         control_thread::{
             buses::{
                 control_thread_data_bus::ControlThreadDataBus,
@@ -25,6 +28,7 @@ use crate::{
                 control_thread_request_state::ControlThreadRequestState,
                 control_thread_scene_state::ControlThreadSceneState,
             }, 
+            control_thread_event_emitter::ControlThreadEventEmitter,
             control_thread_scheduler::ControlThreadScheduler,
             control_thread_signal_dispatcher::ControlThreadSignalDispatcher,
             control_thread_task_generator::ControlThreadTaskGenerator,
@@ -54,6 +58,7 @@ impl ControlThreadHandler {
         io_bus: Arc<Mutex<IOBus>>,
         dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
         executeur_thread_input_channel_sender: Sender<ExecuteurThreadInputSignal>,
+        time_menu: Arc<Mutex<TimeMenu>>,
     ) -> Self {
         let handle = thread::spawn(move ||{
 
@@ -84,7 +89,7 @@ impl ControlThreadHandler {
                 RefCell::new(ControlThreadRequestState::new())
             );
            
-            let control_thread_request_manager = ControlThreadRequestManager::new(
+            let mut control_thread_request_manager = ControlThreadRequestManager::new(
                 control_thread_message_bus.clone(), 
                 control_thread_request_state.clone()
             );
@@ -104,14 +109,19 @@ impl ControlThreadHandler {
                 control_thread_io_event_manager,
             );  
 
-            let task_generator = TaskGenerator::new(
+            let control_thread_event_emitter = ControlThreadEventEmitter::new(
+                control_thread_phase_state, 
                 control_thread_data_bus.clone(), 
-                phase_state,
+                control_thread_scene_state
+            );
+
+            let control_thread_task_generator = ControlThreadTaskGenerator::new(
+                control_thread_data_bus.clone(), 
                 dynamic_shared_thread_state.clone(),
                 time_menu
             ); 
 
-            let mut scheduler = Scheduler::new(
+            let control_thread_scheduler = ControlThreadScheduler::new(
                 control_thread_data_bus,
                 dynamic_shared_thread_state,
                 executeur_thread_input_channel_sender
@@ -122,10 +132,9 @@ impl ControlThreadHandler {
                 control_thread_scene_manager.start();
                 control_thread_request_manager.start();
                 control_thread_phase_manager.start();
-
-
-                task_generator.start();
-                scheduler.start();
+                control_thread_event_emitter.start();
+                control_thread_task_generator.start();
+                control_thread_scheduler.start();
             }
         });
 

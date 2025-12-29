@@ -16,9 +16,14 @@ use crate::{
         },
     },
     enums::{
+        event_enums::{
+            Event,
+            IOEvent,
+        },
         phase_enum::Phase,
     },
 };
+
 
 pub struct ControlThreadEventEmitter {
     control_thread_phase_state: Rc<RefCell<ControlThreadPhaseState>>,
@@ -41,6 +46,8 @@ impl ControlThreadEventEmitter {
 
     pub fn start(&self) {
         let current_phase = self.control_thread_phase_state.borrow().get_current_phase();
+       
+        let mut events: Vec<Event> = Vec::new();
 
         match current_phase {
             Phase::UpdatePhase => {
@@ -49,6 +56,12 @@ impl ControlThreadEventEmitter {
                     .borrow()
                     .get_allowed_game_events(&current_phase)
                     .unwrap();
+                
+                events.extend(
+                    game_events.into_iter().map(|game_event|{
+                        Event::from(game_event)
+                    })
+                );
             },
             Phase::RenderPhase => {
                 let game_events = self
@@ -56,9 +69,29 @@ impl ControlThreadEventEmitter {
                     .borrow()
                     .get_allowed_game_events(&current_phase)
                     .unwrap();
+
+                events.extend(
+                    game_events.into_iter().map(|game_event|{
+                        Event::from(game_event)
+                    })
+                );
             },
-            Phase::ExternalEventsPhase => {},
+            Phase::ExternalEventsPhase => {
+                let io_events: Vec<IOEvent> = self
+                .control_thread_data_bus
+                .borrow_mut()
+                .drain_io_event_queue()
+                .collect();
+
+                events.extend(
+                    io_events.into_iter().map(|io_event|{
+                        Event::from(io_event)
+                    })
+                );
+            },
             Phase::Idle => {},
         }
+
+        self.control_thread_data_bus.borrow_mut().push_events(events.into_iter());
     }
 }

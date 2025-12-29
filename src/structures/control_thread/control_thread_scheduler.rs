@@ -8,14 +8,20 @@ use flume::{
 };
 use crate::{
     structures::{
-        buses::{
-            control_thread_data_bus::ControlThreadDataBus,
+        control_thread::{
+            buses::{
+                control_thread_data_bus::ControlThreadDataBus,
+            },
         },
-        task::Task,
-        task_chunk::{TaskChunk},
-        states::{
-            dynamic_shared_thread_state::DynamicSharedThreadState,
+        main_thread::{
+            states::{
+                dynamic_shared_thread_state::DynamicSharedThreadState,
+            },
         },
+        common_structures::{
+            task::Task,
+            task_chunk::{TaskChunk},
+        },  
     },
     enums::{
         signals::{
@@ -43,7 +49,7 @@ impl ControlThreadScheduler {
         }
     } 
 
-    pub fn start(&mut self){
+    pub fn start(&self){
         let mut data_bus = self.control_thread_data_bus.borrow_mut();
 
         let tasks: Vec<Task> = data_bus.drain_task_queue().collect();
@@ -75,7 +81,5 @@ impl ControlThreadScheduler {
 
         lock_dynamic_shared_thread_state.set_schedule(schedule.into_iter());
         self.executeur_thread_input_channel_sender.send(ExecuteurThreadInputSignal::ScheduleReady).unwrap();
-    }
-    
-    
+    } 
 }

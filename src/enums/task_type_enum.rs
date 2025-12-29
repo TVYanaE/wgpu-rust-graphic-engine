@@ -1,8 +1,5 @@
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum TaskType {
-    // Init 
-    Init,
-    Shutdown,
     // Logic calc
     LogicCalculation,
     // Render pipeline
@@ -17,8 +14,6 @@ pub enum TaskType {
 impl TaskType {
     pub fn get_requirements(&self) -> Vec<TaskType> {
         match self {
-            TaskType::Init => { vec![] },
-            TaskType::Shutdown => { vec![] },
             TaskType::LogicCalculation => { vec![] },
             TaskType::PrepareRenderState => { vec![] },
             TaskType::DrawRenderState => { vec![] },

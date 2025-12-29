@@ -46,7 +46,7 @@ impl ControlThreadSignalDispatcher {
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&self) {
         loop {
             match self.control_thread_input_channel_receiver.try_recv() {
                 Ok(control_thread_input_signal) => {

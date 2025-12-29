@@ -3,19 +3,21 @@ use std::{
 };
 use crate::{
     structures::{
-        time_budget::TimeBudget,
+        common_structures::{
+            time_budget::TimeBudget,
+        },
     },
     enums::{
         time_budget_type_enum::TimeBudgetType,
     },
 };
 
-pub struct TimeState {
+pub struct ExecuteurThreadTimeState {
     pub render_time_budget: TimeBudget,
     pub logic_time_budget: TimeBudget,
 }
 
-impl Default for TimeState {
+impl Default for ExecuteurThreadTimeState {
     fn default() -> Self {
         let render_time_budget = TimeBudget::new(
             TimeBudgetType::RenderTimeBudget, 

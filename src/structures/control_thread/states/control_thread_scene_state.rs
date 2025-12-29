@@ -6,8 +6,10 @@ use crate::{
         },
     }, 
     enums::{
+        event_enums::{
+            GameEvent
+        },
         phase_enum::Phase,
-        game_event_enum::GameEvent,
     },
 };
 

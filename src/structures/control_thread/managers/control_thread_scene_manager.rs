@@ -24,9 +24,11 @@ use crate::{
                 ControlThreadSceneManagerMessage
             },
         },
+        event_enums::{
+            GameEvent,
+        },
         scene_type_enum::SceneType,
         phase_enum::Phase,
-        game_event_enum::GameEvent,
     },
 };
 

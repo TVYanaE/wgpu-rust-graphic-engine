@@ -4,7 +4,9 @@ use winit::{
 };
 use crate::{
     structures::{
-        task_chunk::TaskChunk,
+        common_structures::{
+            task_chunk::TaskChunk,
+        },
     },
 };
 

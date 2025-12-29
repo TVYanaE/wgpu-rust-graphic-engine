@@ -6,14 +6,18 @@ use std::{
 };
 use crate::{
     structures::{
-        buses::{
-            executeur_thread_data_bus::ExecuteurThreadDataBus,
-            executeur_thread_message_bus::ExecuteurThreadMessageBus,
-        },
+        executeur_thread::{
+            buses::{
+                executeur_thread_data_bus::ExecuteurThreadDataBus,
+                executeur_thread_message_bus::ExecuteurThreadMessageBus,
+            },
         states::{
-            time_state::TimeState,
+                executeur_thread_time_state::ExecuteurThreadTimeState,
+            },
         },
-        task_chunk::TaskChunk,
+        common_structures::{
+            task_chunk::TaskChunk,
+        },
     },
     enums::{
         execute_thread_message_enums::{
@@ -24,26 +28,26 @@ use crate::{
     },
 };
 
-pub struct TimeController {
+pub struct ExecuteurThreadTimeController {
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
     executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
-    time_state: Rc<RefCell<TimeState>>,
+    executeur_thread_time_state: Rc<RefCell<ExecuteurThreadTimeState>>,
     task_chunk_debt: VecDeque<TaskChunk>,
     avaiable_render_time_budget: Duration,
     avaiable_logic_time_budget: Duration,
 }
 
-impl TimeController {
+impl ExecuteurThreadTimeController {
     pub fn new(
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
         executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
-        time_state: Rc<RefCell<TimeState>>,
+        executeur_thread_time_state: Rc<RefCell<ExecuteurThreadTimeState>>,
         
     ) -> Self {
         Self { 
             executeur_thread_message_bus: executeur_thread_message_bus, 
             executeur_thread_data_bus: executeur_thread_data_bus,
-            time_state: time_state,
+            executeur_thread_time_state: executeur_thread_time_state,
             task_chunk_debt: VecDeque::new(),
             avaiable_render_time_budget: Duration::ZERO,
             avaiable_logic_time_budget: Duration::ZERO,
@@ -72,11 +76,19 @@ impl TimeController {
             self.task_chunk_debt.push_back(task_chunk);
         }
 
-        if let Some(new_render_time_budget) = self.time_state.borrow_mut().render_time_budget.get_avaiable_budget() {
+        if let Some(new_render_time_budget) = self
+            .executeur_thread_time_state
+            .borrow_mut()
+            .render_time_budget
+            .get_avaiable_budget() {
             self.avaiable_render_time_budget = new_render_time_budget;
         }
 
-        if let Some(new_logic_time_budget) = self.time_state.borrow_mut().logic_time_budget.get_avaiable_budget() {
+        if let Some(new_logic_time_budget) = self
+            .executeur_thread_time_state
+            .borrow_mut()
+            .logic_time_budget
+            .get_avaiable_budget() {
             self.avaiable_logic_time_budget = new_logic_time_budget;
         }
         
