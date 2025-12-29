@@ -1,8 +1,0 @@
-#[derive(Debug, Clone, Copy)]
-pub enum ECSThreadInputSignal {
-    Init,
-    Shutdown,
-    Resize,
-    LogicCalculation,
-    PrepareRenderState,
-}

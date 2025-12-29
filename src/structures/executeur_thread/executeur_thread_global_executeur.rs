@@ -19,7 +19,7 @@ use crate::{
             ExecuteurThreadGlobalExecuteurMessage
         },
         signals::{
-            ecs_thread_signal_enums::ECSThreadInputSignal,
+            logic_thread_signal_enums::LogicThreadInputSignal,
             render_thread_signal_enums::RenderThreadInputSignal,
         },
         task_type_enum::TaskType,
@@ -29,7 +29,7 @@ use crate::{
 pub struct ExecuteurThreadGlobalExecuteur {
     executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
     executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
-    ecs_thread_input_channel_sender: Sender<ECSThreadInputSignal>,
+    logic_thread_input_channel_sender: Sender<LogicThreadInputSignal>,
     render_thread_input_channel_sender: Sender<RenderThreadInputSignal>,
 }
 
@@ -37,13 +37,13 @@ impl ExecuteurThreadGlobalExecuteur {
     pub fn new(
         executeur_thread_message_bus: Rc<RefCell<ExecuteurThreadMessageBus>>,
         executeur_thread_data_bus: Rc<RefCell<ExecuteurThreadDataBus>>,
-        ecs_thread_input_channel_sender: Sender<ECSThreadInputSignal>,
+        logic_thread_input_channel_sender: Sender<LogicThreadInputSignal>,
         render_thread_input_channel_sender: Sender<RenderThreadInputSignal>,
     ) -> Self {
         Self {
             executeur_thread_message_bus: executeur_thread_message_bus, 
             executeur_thread_data_bus: executeur_thread_data_bus, 
-            ecs_thread_input_channel_sender: ecs_thread_input_channel_sender,
+            logic_thread_input_channel_sender: logic_thread_input_channel_sender,
             render_thread_input_channel_sender: render_thread_input_channel_sender,
         }
     }
@@ -73,14 +73,14 @@ impl ExecuteurThreadGlobalExecuteur {
             for task in task_chunk.drain_chunk() {
                 match task.task_type {                    
                     TaskType::Resize => {
-                        self.ecs_thread_input_channel_sender.send(ECSThreadInputSignal::Resize);
+                        self.logic_thread_input_channel_sender.send(LogicThreadInputSignal::Resize);
                         self.render_thread_input_channel_sender.send(RenderThreadInputSignal::Resize);
                     },
                     TaskType::LogicCalculation => {
-                        self.ecs_thread_input_channel_sender.send(ECSThreadInputSignal::LogicCalculation);
+                        self.logic_thread_input_channel_sender.send(LogicThreadInputSignal::LogicCalculation);
                     },
                     TaskType::PrepareRenderState => {
-                        self.ecs_thread_input_channel_sender.send(ECSThreadInputSignal::PrepareRenderState);
+                        self.logic_thread_input_channel_sender.send(LogicThreadInputSignal::PrepareRenderState);
                     },
                     TaskType::DrawRenderState => {
                         self.render_thread_input_channel_sender.send(RenderThreadInputSignal::DrawRenderState);

@@ -11,7 +11,7 @@ use flume::{
 };
 use crate::{
     enums::signals::{
-        ecs_thread_signal_enums::ECSThreadInputSignal, 
+        logic_thread_signal_enums::LogicThreadInputSignal, 
         executeur_thread_signal_enums::ExecuteurThreadInputSignal, 
         render_thread_signal_enums::RenderThreadInputSignal
     }, 
@@ -50,7 +50,7 @@ impl ExecuteurThread {
     pub fn start_thread(
         executeur_thread_input_channel_receiver: Receiver<ExecuteurThreadInputSignal>,
         dynamic_shared_thread_state: Arc<Mutex<DynamicSharedThreadState>>,
-        ecs_thread_input_channel_sender: Sender<ECSThreadInputSignal>,
+        logic_thread_input_channel_sender: Sender<LogicThreadInputSignal>,
         render_thread_input_channel_sender: Sender<RenderThreadInputSignal>,
     ) -> Self {
         let handle = thread::spawn(move||{
@@ -92,7 +92,7 @@ impl ExecuteurThread {
             let executeur_thread_global_executeur = ExecuteurThreadGlobalExecuteur::new(
                 executeur_thread_message_bus, 
                 executeur_thread_data_bus,
-                ecs_thread_input_channel_sender,
+                logic_thread_input_channel_sender,
                 render_thread_input_channel_sender,
             );
 

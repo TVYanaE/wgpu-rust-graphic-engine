@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, Copy)]
-pub enum ECSThreadWorldManagerMessage {
+pub enum LogicThreadInputSignal {
     Init,
     Shutdown,
+    Resize,
     LogicCalculation,
     PrepareRenderState,
-    Resize,
 }

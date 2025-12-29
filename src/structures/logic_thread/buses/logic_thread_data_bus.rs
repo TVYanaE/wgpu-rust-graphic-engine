@@ -1,11 +1,11 @@
 
 
 
-pub struct ECSThreadDataBus {
+pub struct LogicThreadDataBus {
 
 }
 
-impl ECSThreadDataBus {
+impl LogicThreadDataBus {
     pub fn new() -> Self {
         Self {
 
