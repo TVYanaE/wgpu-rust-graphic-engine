@@ -18,7 +18,7 @@ impl Timer {
             last_time_check: Instant::now(), 
             delta: Duration::ZERO, 
             frame_threshold: Duration::from_millis(17),
-            logic_threshold: Duration::from_millis(51),
+            logic_threshold: Duration::from_millis(34),
             logic_time_accumulator: Duration::ZERO,
             frame_time_accumulator: Duration::ZERO,
         }

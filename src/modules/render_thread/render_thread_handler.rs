@@ -17,6 +17,7 @@ use super::{
             },
             camera::ViewProjectionUniformMatrixCache,
         },
+        render_state_snapshot::RenderStateSnapshot,
     },
     events::{
         external_event::ExternalEvent,
@@ -60,6 +61,9 @@ impl RenderThreadHandler {
             // Init buffers for events 
             let mut external_event_queue: VecDeque<ExternalEvent> = VecDeque::with_capacity(8); 
 
+            // RenderStateSnapshot 
+            let mut render_state_snapshot = RenderStateSnapshot::default();
+
             // Init cache for render batches
             let mut render_batches_cache: Vec<RenderBatch> = Vec::with_capacity(8); 
 
@@ -79,9 +83,10 @@ impl RenderThreadHandler {
                                     render_state_bus.clone(),
                                     &mut render_batches_cache,
                                     &mut view_projection_uniform_matrix_cache,
+                                    &mut render_state_snapshot,
                                 );
                             },
-                            RenderThreadInputSignal::Start => {
+                           RenderThreadInputSignal::Start => {
                                 run_start_pipeline();
                             },
                             RenderThreadInputSignal::Shutdown => {
