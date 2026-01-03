@@ -41,6 +41,9 @@ pub fn external_event_collecting_phase(
                     WindowEvent::Resized(physical_size) => {
                         external_event_queue.push_back(ExternalEvent::Resize(*physical_size));
                     },
+                    WindowEvent::RedrawRequested => {
+                        external_event_queue.push_back(ExternalEvent::RedrawRequested);
+                    },  
                     _ => {}
                 }
             }

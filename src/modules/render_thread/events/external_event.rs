@@ -1,7 +1,5 @@
 use winit::{
-    dpi::{
-        PhysicalSize
-    },
+    dpi::PhysicalSize,
 };
 
 
@@ -9,4 +7,5 @@ use winit::{
 #[derive(Debug)]
 pub enum ExternalEvent {
     Resize(PhysicalSize<u32>),
+    RedrawRequested,
 }

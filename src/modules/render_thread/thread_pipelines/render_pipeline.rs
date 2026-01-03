@@ -46,18 +46,7 @@ pub fn run_render_pipeline(
     render_state_snapshot: &mut RenderStateSnapshot,
 ) {
     external_event_collecting_phase(winit_event_bus, external_event_queue);
-    external_event_handling_phase(external_event_queue, gpu_state);
-    
-    let size = gpu_state.window.inner_size();
-
-    if size.width != gpu_state.surface_configuration.width
-        || size.height != gpu_state.surface_configuration.height
-    {
-        gpu_state.surface_configuration.width = size.width;
-        gpu_state.surface_configuration.height = size.height;
-        gpu_state.surface.configure(&gpu_state.device, &gpu_state.surface_configuration);
-    }
-
+    external_event_handling_phase(external_event_queue, gpu_state); 
     obtaining_render_state_phase(render_state_bus, render_state_snapshot);
     render_prepare_phase(
         &gpu_state.device, 
